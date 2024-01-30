@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from Models import Resnet, Sine
+from Models import *
 
 
 class FBSNN(ABC):
@@ -193,9 +193,6 @@ class FBSNN(ABC):
 
         return X_star, Y_star
 
-    ###########################################################################
-    ############################# Change Here! ################################
-    ###########################################################################
     @abstractmethod
     def phi_tf(self, t, X, Y, Z):  # M x 1, M x D, M x 1, M x D
         pass  # M x1
@@ -215,4 +212,4 @@ class FBSNN(ABC):
         M = self.M
         D = self.D
         return torch.diag_embed(torch.ones([M, D])).to(self.device)  # M x D x D
-    ###########################################################################
+
