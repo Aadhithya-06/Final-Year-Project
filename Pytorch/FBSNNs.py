@@ -303,9 +303,6 @@ class FBSNN(ABC):
         # These predictions correspond to the neural network's estimation of the state and output at each time step
         return X_star, Y_star
 
-
-class FBSNN(ABC):
-
     @abstractmethod
     def phi_tf(self, t, X, Y, Z):  # M x 1, M x D, M x 1, M x D
         # Abstract method for defining the drift term in the SDE

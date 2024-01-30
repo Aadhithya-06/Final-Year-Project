@@ -60,8 +60,8 @@ def u_exact(T, t, X):
     # t: The current time, a vector of size (N+1) x 1. Represents the time steps in the time discretization
     # X: The current state, an array of size (N+1) x D. Represents the state variables at each time step
     
-    r = 0.05         # Represents the risk-free interest rate.
-    sigma_max = 0.4  # Represents the maximum volatility.
+    r = 0.05         # Represents the risk-free interest rate
+    sigma_max = 0.4  # Represents the maximum volatility
 
     # The exact solution is calculated using an exponential term and a summation term
     # The exponential term accounts for the time value of money and volatility
