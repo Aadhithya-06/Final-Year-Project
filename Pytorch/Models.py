@@ -114,8 +114,6 @@ class SDEnet(nn.Module):
             out = layer(out)
             out = shortcut + self.h * self.activation(out) + self.h ** (1 / 2) * self.product(self.brownian[i],
                                                                                               torch.rand_like(out))
-            # out = shortcut + self.activation(out) + 0.4*torch.ones_like(out)*torch.rand_like(out)
-
         out = self.layers[-1](out)
 
         return out
@@ -135,40 +133,6 @@ class VerletNet(nn.Module):
 
     def transpose(self, layer, out):
 
-        return F.linear(out, layer.weight.t(), layer.bias)
-
-    def forward(self, x):
-
-        out = self.layers[0](x)
-        out = self.activation(out)
-
-        z = torch.zeros_like(out)
-
-        for layer in self.layers[1:-1]:
-            shortcut = out
-            out = self.transpose(layer, out)
-            z = z - self.activation(out)
-            out = layer(z)
-            out = shortcut + self.activation(out)
-
-        out = self.layers[-1](out)
-
-        return out
-
-
-class VerletNet(nn.Module):
-
-    def __init__(self, layers, activation):
-        super(VerletNet, self).__init__()
-
-        self.layers = nn.ModuleList()
-        for i in range(len(layers) - 1):
-            self.layers.append(nn.Linear(in_features=layers[i], out_features=layers[i + 1]))
-
-        self.h = 0.5
-        self.activation = activation
-
-    def transpose(self, layer, out):
         return F.linear(out, layer.weight.t(), layer.bias)
 
     def forward(self, x):
