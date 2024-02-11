@@ -36,6 +36,8 @@ class FBSNN(ABC):
         self.Xi = torch.from_numpy(Xi).float().to(self.device)  # initial point
         self.Xi.requires_grad = True
 
+        self.cholesky = self.generate_cholesky()
+
         # Store other parameters as attributes of the class.
         self.T = T  # terminal time
         self.M = M  # number of trajectories
@@ -211,8 +213,15 @@ class FBSNN(ABC):
         Dt[:, 1:, :] = dt
 
         # Generate Brownian increments for each trajectory and time snapshot
-        # These are normally distributed with mean 0 and variance equal to the time step size
-        DW[:, 1:, :] = np.sqrt(dt) * np.random.normal(size=(M, N, D))
+        uncorrelated = np.random.normal(size=(M, N, D))
+
+        for m in range(M):
+            for n in range(N):
+                DW[m, n+1, :] = np.dot(self.cholesky, uncorrelated[m, n, :])
+
+
+        print('here')
+        print(np.cov(DW[3,:,:], rowvar=False))
 
         # Cumulatively sum the time steps and Brownian increments to get the actual time values and Brownian paths
         t = np.cumsum(Dt, axis=1)  # Cumulative time for each trajectory and time snapshot
@@ -303,6 +312,35 @@ class FBSNN(ABC):
         # These predictions correspond to the neural network's estimation of the state and output at each time step
         return X_star, Y_star
 
+    def generate_cholesky(self):
+        # Variances of the individual assets
+        variances = np.array([1/50, 1/50, 1/50])  # Variances for Asset 1, Asset 2, Asset 3
+
+        # Correlation matrix (must be positive semi-definite and symmetric)
+        # For instance, let's assume we have the following correlations:
+        # Asset 1 and Asset 2: 0.8
+        # Asset 1 and Asset 3: 0.5
+        # Asset 2 and Asset 3: 0.3
+        correlation_matrix = np.array([
+        [1.0, 0.8, 0.5],
+        [0.8, 1.0, 0.3],
+        [0.5, 0.3, 1.0]
+        ])
+
+        # Check if the correlation matrix is valid
+        if not np.allclose(correlation_matrix, correlation_matrix.T):
+            raise ValueError("Correlation matrix is not symmetric.")
+        if np.any(np.linalg.eigvalsh(correlation_matrix) < 0):
+            raise ValueError("Correlation matrix is not positive semi-definite.")
+
+        # Standard deviations (square roots of variances)
+        std_devs = np.sqrt(variances)
+
+        # Covariance matrix construction
+        covariance_matrix = np.outer(std_devs, std_devs) * correlation_matrix
+        cholesky = np.linalg.cholesky(covariance_matrix)
+        return cholesky
+
     @abstractmethod
     def phi_tf(self, t, X, Y, Z):  # M x 1, M x D, M x 1, M x D
         # Abstract method for defining the drift term in the SDE
@@ -346,3 +384,4 @@ class FBSNN(ABC):
         M = self.M
         D = self.D
         return torch.diag_embed(torch.ones([M, D])).to(self.device)  # M x D x D
+
