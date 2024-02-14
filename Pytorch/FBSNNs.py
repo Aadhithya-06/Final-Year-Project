@@ -219,10 +219,6 @@ class FBSNN(ABC):
             for n in range(N):
                 DW[m, n+1, :] = np.dot(self.cholesky, uncorrelated[m, n, :])
 
-
-        print('here')
-        print(np.cov(DW[3,:,:], rowvar=False))
-
         # Cumulatively sum the time steps and Brownian increments to get the actual time values and Brownian paths
         t = np.cumsum(Dt, axis=1)  # Cumulative time for each trajectory and time snapshot
         W = np.cumsum(DW, axis=1)  # Cumulative Brownian motion for each trajectory, time snapshot, and dimension

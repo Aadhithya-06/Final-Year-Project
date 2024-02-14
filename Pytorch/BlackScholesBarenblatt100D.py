@@ -50,7 +50,11 @@ class BlackScholesBarenblatt(FBSNN):
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
         # Each matrix is scaled by 0.4 times the corresponding state in X
-        return 0.4 * torch.diag_embed(X)  # M x D x D
+        # Calculate the state-dependent volatility, ensuring it does not exceed the maximum value
+        volatility = torch.min(X, 0.4 * torch.ones_like(X))  # M x D
+        # Apply the Cholesky decomposition to the volatility
+        sigma = torch.matmul(torch.diag_embed(volatility), torch.from_numpy(self.cholesky).float().to(X.device))
+        return sigma  # M x D x D
 
 
 def u_exact(T, t, X):
