@@ -36,8 +36,6 @@ class FBSNN(ABC):
         self.Xi = torch.from_numpy(Xi).float().to(self.device)  # initial point
         self.Xi.requires_grad = True
 
-        self.cholesky = self.generate_cholesky()
-
         # Store other parameters as attributes of the class.
         self.T = T  # terminal time
         self.M = M  # number of trajectories
@@ -45,7 +43,7 @@ class FBSNN(ABC):
         self.D = D  # number of dimensions
         self.mode = mode  # architecture of the neural network
         self.activation = activation  # activation function
-
+        self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
         # Initialize the activation function based on the provided parameter
         if activation == "Sine":
             self.activation_function = Sine()
@@ -213,11 +211,8 @@ class FBSNN(ABC):
         Dt[:, 1:, :] = dt
 
         # Generate Brownian increments for each trajectory and time snapshot
-        uncorrelated = np.random.normal(size=(M, N, D))
-
-        for m in range(M):
-            for n in range(N):
-                DW[m, n+1, :] = np.dot(self.cholesky, uncorrelated[m, n, :])
+        DW_uncorrelated = np.sqrt(dt) * np.random.normal(size=(M, N, D))
+        DW[:, 1:, :] = DW_uncorrelated #np.einsum('ij,mnj->mni', self.L, DW_uncorrelated)  # Apply Cholesky matrix to introduce correlations
 
         # Cumulatively sum the time steps and Brownian increments to get the actual time values and Brownian paths
         t = np.cumsum(Dt, axis=1)  # Cumulative time for each trajectory and time snapshot
@@ -310,32 +305,38 @@ class FBSNN(ABC):
 
     def generate_cholesky(self):
         # Variances of the individual assets
-        variances = np.array([1/50, 1/50, 1/50])  # Variances for Asset 1, Asset 2, Asset 3
+        rho = 0.5 
 
-        # Correlation matrix (must be positive semi-definite and symmetric)
-        # For instance, let's assume we have the following correlations:
-        # Asset 1 and Asset 2: 0.8
-        # Asset 1 and Asset 3: 0.5
-        # Asset 2 and Asset 3: 0.3
-        correlation_matrix = np.array([
-        [1.0, 0.8, 0.5],
-        [0.8, 1.0, 0.3],
-        [0.5, 0.3, 1.0]
-        ])
+        # Create an identity matrix for the diagonal
+        correlation_matrix = np.eye(self.D)
+
+        # Set off-diagonal elements to rho
+        correlation_matrix[correlation_matrix == 0] = rho
+
 
         # Check if the correlation matrix is valid
         if not np.allclose(correlation_matrix, correlation_matrix.T):
             raise ValueError("Correlation matrix is not symmetric.")
         if np.any(np.linalg.eigvalsh(correlation_matrix) < 0):
             raise ValueError("Correlation matrix is not positive semi-definite.")
-
+            
         # Standard deviations (square roots of variances)
-        std_devs = np.sqrt(variances)
+        L = np.linalg.cholesky(correlation_matrix)
 
-        # Covariance matrix construction
-        covariance_matrix = np.outer(std_devs, std_devs) * correlation_matrix
-        cholesky = np.linalg.cholesky(covariance_matrix)
-        return cholesky
+        return L
+
+    def save_model(self, file_name):
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'training_loss': self.training_loss,
+            'iteration': self.iteration
+        }, file_name)
+    
+    def load_model(self, file_name):
+        checkpoint = torch.load(file_name, map_location=self.device)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.training_loss = checkpoint['training_loss']
+        self.iteration = checkpoint['iteration']
 
     @abstractmethod
     def phi_tf(self, t, X, Y, Z):  # M x 1, M x D, M x 1, M x D
@@ -380,4 +381,3 @@ class FBSNN(ABC):
         M = self.M
         D = self.D
         return torch.diag_embed(torch.ones([M, D])).to(self.device)  # M x D x D
-
