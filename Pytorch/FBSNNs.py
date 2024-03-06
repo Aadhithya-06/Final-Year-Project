@@ -292,7 +292,6 @@ class FBSNN(ABC):
         # W_star: The Brownian motion paths corresponding to the time steps
 
         # Convert the initial state (Xi_star) from a numpy array to a PyTorch tensor
-        # Then transfer it to the configured device (CPU or GPU) and set requires_grad to True for gradient computation
         Xi_star = torch.from_numpy(Xi_star).float().to(self.device)
         Xi_star.requires_grad = True
 
@@ -319,7 +318,7 @@ class FBSNN(ABC):
             raise ValueError("Correlation matrix is not symmetric.")
         if np.any(np.linalg.eigvalsh(correlation_matrix) < 0):
             raise ValueError("Correlation matrix is not positive semi-definite.")
-            
+
         # Standard deviations (square roots of variances)
         L = np.linalg.cholesky(correlation_matrix)
 
