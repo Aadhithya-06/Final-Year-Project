@@ -41,6 +41,7 @@ class FBSNN(ABC):
         self.M = M  # number of trajectories
         self.N = N  # number of time snapshots
         self.D = D  # number of dimensions
+        self.strike = 0.5  # strike price
         # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
         self.mode = mode  # architecture of the neural network
