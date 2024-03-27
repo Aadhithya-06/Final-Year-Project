@@ -35,8 +35,8 @@ class BlackScholesBarenblatt(FBSNN):
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        max_values = torch.relu(X-0.5)
-        return torch.sum(max_values, 1, keepdim=True)  # M x 1
+        # max_values = torch.relu(X-0.5)
+        return torch.sum(X**2, 1, keepdim=True)  # M x 1
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
@@ -51,19 +51,20 @@ class BlackScholesBarenblatt(FBSNN):
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
 
-        # L = torch.from_numpy(self.L).float().to(self.device)  # D x D
-
         # Assuming sigma is the volatility scalar, in this case, 0.4
         sigma = 0.4
+
+        # L = torch.from_numpy(self.L).float().to(self.device)  # D x D
+
 
         # The covariance matrix is sigma^2 times the correlation matrix, so the diffusion matrix in its simplest form
         # would be the identity matrix scaled by sigma, transformed by L to incorporate correlations.
         # However, since L already captures the correlation, we directly use it scaled by sigma for the diffusion.
 
         # # Create a diffusion matrix that incorporates correlations
-        # diffusion_matrix = sigma * L  # This needs to be adjusted based on how you use L and sigma in your model's context
-        # diffusion_matrix.unsqueeze(0).repeat(self.M, 1, 1)
-        return sigma * torch.diag_embed(X)  # M x D x D
+        # diffusion_matrix = sigma * L # D x D
+       
+        return sigma * torch.diag_embed(X) # diffusion_matrix.unsqueeze(0).repeat(self.M, 1, 1)   # M x D x D
 
 
 def u_exact(T, t, X):
@@ -80,4 +81,4 @@ def u_exact(T, t, X):
     # The exponential term accounts for the time value of money and volatility
     # The summation term represents the square of the state variables summed across the D dimensions
     # The solution is computed for each time step and state, resulting in a vector of size (N+1) x 1
-    return np.exp((r + sigma_max ** 2) * (T - t)) * np.maximum(X-0.5, 0).sum(axis=1,keepdims=True)  # (N+1) x 1
+    return np.exp((r + sigma_max ** 2) * (T - t))  * np.sum(X ** 2, 1, keepdims=True)  # (N+1) x 1

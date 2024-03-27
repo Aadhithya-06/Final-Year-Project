@@ -41,10 +41,10 @@ class FBSNN(ABC):
         self.M = M  # number of trajectories
         self.N = N  # number of time snapshots
         self.D = D  # number of dimensions
+        # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
+
         self.mode = mode  # architecture of the neural network
-        self.activation = activation  # activation function
-        self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
-        # Initialize the activation function based on the provided parameter
+        self.activation = activation  # activation function        # Initialize the activation function based on the provided parameter
         if activation == "Sine":
             self.activation_function = Sine()
         elif activation == "ReLU":
