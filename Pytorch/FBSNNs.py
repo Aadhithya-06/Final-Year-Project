@@ -10,7 +10,7 @@ from Models import *
 
 
 class FBSNN(ABC):
-    def __init__(self, Xi, T, M, N, D, layers, mode, activation):
+    def __init__(self, Xi, T, M, N, D, Mm, layers, mode, activation):
         # Constructor for the FBSNN class
         # Initializes the neural network with specified parameters and architecture
         
@@ -41,6 +41,7 @@ class FBSNN(ABC):
         self.M = M  # number of trajectories
         self.N = N  # number of time snapshots
         self.D = D  # number of dimensions
+        self.Mm = Mm  # number of discretization points for the SDE
         self.strike = 0.5  # strike price
         # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
@@ -245,9 +246,13 @@ class FBSNN(ABC):
 
         # Record the start time for timing the training process
         start_time = time.time()
-
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
+            if it >= 2000:
+                self.N = int(self.Mm ** (int(it / 2000) + 1))
+            else:
+                self.N = int(self.Mm)
+
             # Zero the gradients before each iteration
             self.optimizer.zero_grad()
 
@@ -277,6 +282,8 @@ class FBSNN(ABC):
                 self.training_loss.append(loss_temp.mean())  # Append the average loss
                 loss_temp = np.array([])  # Reset the temporary loss array
                 self.iteration.append(it)  # Append the current iteration number
+            if it == 18000:
+                print(self.N)
 
         # Stack the iteration and training loss for plotting
         graph = np.stack((self.iteration, self.training_loss))

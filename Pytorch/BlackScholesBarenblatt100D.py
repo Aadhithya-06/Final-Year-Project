@@ -7,7 +7,7 @@ from FBSNNs import FBSNN
 
 
 class BlackScholesBarenblatt(FBSNN):
-    def __init__(self, Xi, T, M, N, D, layers, mode, activation):
+    def __init__(self, Xi, T, M, N, D, Mm, layers, mode, activation):
         # Constructor for the BlackScholesBarenblatt class
         # Initializes a new instance with specified parameters for the neural network
         # Inherits from FBSNN (Forward-Backward Stochastic Neural Network)
@@ -20,7 +20,7 @@ class BlackScholesBarenblatt(FBSNN):
         # layers: Configuration of the neural network layers
         # mode: Operation mode
         # activation: Activation function for the neural network
-        super().__init__(Xi, T, M, N, D, layers, mode, activation)
+        super().__init__(Xi, T, M, N, D, Mm, layers, mode, activation)
 
     def phi_tf(self, t, X, Y, Z):
         # Defines the drift term in the Black-Scholes-Barenblatt equation for a batch
@@ -35,9 +35,9 @@ class BlackScholesBarenblatt(FBSNN):
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        underlying = torch.sum(X, dim=1, keepdim=True)
-        value = torch.maximum(underlying - self.strike * self.D, torch.tensor(0.0))        
-        return value  # M x 1
+        # underlying = torch.sum(X, dim=1, keepdim=True)
+        # value = torch.maximum(underlying - self.strike * self.D, torch.tensor(0.0))        
+        return  torch.sum(X ** 2, 1, keepdim=True) #value  # M x 1
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
@@ -82,4 +82,4 @@ def u_exact(T, t, X):
     # The exponential term accounts for the time value of money and volatility
     # The summation term represents the square of the state variables summed across the D dimensions
     # The solution is computed for each time step and state, resulting in a vector of size (N+1) x 1
-    return np.exp((r + sigma_max ** 2) * (T - t))  * np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 3, 0)  # (N+1) x 1
+    return np.exp((r + sigma_max ** 2) * (T - t))  * np.sum(X ** 2, 1, keepdims=True) #np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 100, 0)  # (N+1) x 1
