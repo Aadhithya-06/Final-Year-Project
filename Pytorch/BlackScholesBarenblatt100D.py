@@ -35,9 +35,9 @@ class BlackScholesBarenblatt(FBSNN):
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        # underlying = torch.sum(X, dim=1, keepdim=True)
-        # value = torch.maximum(underlying - self.strike * self.D, torch.tensor(0.0))        
-        return  torch.sum(X ** 2, 1, keepdim=True) #value  # M x 1
+        underlying = torch.sum(X, dim=1, keepdim=True)
+        value = torch.maximum(underlying - self.strike * self.D, torch.tensor(0.0))        
+        return value  # M x 1
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
@@ -82,4 +82,4 @@ def u_exact(T, t, X):
     # The exponential term accounts for the time value of money and volatility
     # The summation term represents the square of the state variables summed across the D dimensions
     # The solution is computed for each time step and state, resulting in a vector of size (N+1) x 1
-    return np.exp((r + sigma_max ** 2) * (T - t))  * np.sum(X ** 2, 1, keepdims=True) #np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 100, 0)  # (N+1) x 1
+    return np.exp((r + sigma_max ** 2) * (T - t))  * np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 100, 0) # np.sum(X ** 2, 1, keepdims=True)  # (N+1) x 1
