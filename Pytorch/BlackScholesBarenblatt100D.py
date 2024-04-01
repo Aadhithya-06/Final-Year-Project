@@ -55,7 +55,7 @@ class BlackScholesBarenblatt(FBSNN):
         # Assuming sigma is the volatility scalar, in this case, 0.4
         sigma = 0.4
 
-        # L = torch.from_numpy(self.L).float().to(self.device)  # D x D
+        L = torch.from_numpy(self.L).float().to(self.device)  # D x D
 
 
         # The covariance matrix is sigma^2 times the correlation matrix, so the diffusion matrix in its simplest form
@@ -63,9 +63,9 @@ class BlackScholesBarenblatt(FBSNN):
         # However, since L already captures the correlation, we directly use it scaled by sigma for the diffusion.
 
         # # Create a diffusion matrix that incorporates correlations
-        # diffusion_matrix = sigma * L # D x D
+        diffusion_matrix = sigma * L # D x D
        
-        return sigma * torch.diag_embed(X) # diffusion_matrix.unsqueeze(0).repeat(self.M, 1, 1)   # M x D x D
+        return diffusion_matrix.unsqueeze(0).repeat(self.M, 1, 1) # sigma * torch.diag_embed(X) #    # M x D x D
 
 
 def u_exact(T, t, X):
@@ -82,4 +82,4 @@ def u_exact(T, t, X):
     # The exponential term accounts for the time value of money and volatility
     # The summation term represents the square of the state variables summed across the D dimensions
     # The solution is computed for each time step and state, resulting in a vector of size (N+1) x 1
-    return np.exp((r + sigma_max ** 2) * (T - t))  * np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 100, 0) # np.sum(X ** 2, 1, keepdims=True)  # (N+1) x 1
+    return np.exp((r + sigma_max ** 2) * (T - t))  * np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 3, 0) # np.sum(X ** 2, 1, keepdims=True)  # (N+1) x 1
