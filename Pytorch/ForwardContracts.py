@@ -54,7 +54,7 @@ class ForwardContracts(FBSNN):
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
 
         # Assuming sigma is the volatility scalar, in this case, 0.4
-        sigma = 0.1
+        sigma = 0.25
 
         # L = torch.from_numpy(self.L).float().to(self.device)  # D x D
 
