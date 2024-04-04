@@ -43,7 +43,7 @@ class FBSNN(ABC):
         self.D = D  # number of dimensions
         self.Mm = Mm  # number of discretization points for the SDE
         self.strike = 0.5  # strike price
-        self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
+        # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
         self.mode = mode  # architecture of the neural network
         self.activation = activation  # activation function        # Initialize the activation function based on the provided parameter
@@ -214,7 +214,7 @@ class FBSNN(ABC):
 
         # Generate Brownian increments for each trajectory and time snapshot
         DW_uncorrelated = np.sqrt(dt) * np.random.normal(size=(M, N, D))
-        DW[:, 1:, :] = np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) #DW_uncorrelated #  # Apply Cholesky matrix to introduce correlations
+        DW[:, 1:, :] = DW_uncorrelated # np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) # Apply Cholesky matrix to introduce correlations
 
         # Cumulatively sum the time steps and Brownian increments to get the actual time values and Brownian paths
         t = np.cumsum(Dt, axis=1)  # Cumulative time for each trajectory and time snapshot
@@ -282,8 +282,6 @@ class FBSNN(ABC):
                 self.training_loss.append(loss_temp.mean())  # Append the average loss
                 loss_temp = np.array([])  # Reset the temporary loss array
                 self.iteration.append(it)  # Append the current iteration number
-            if it == 18000:
-                print(self.N)
 
         # Stack the iteration and training loss for plotting
         graph = np.stack((self.iteration, self.training_loss))
