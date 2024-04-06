@@ -6,7 +6,7 @@ import time
 from FBSNNs import FBSNN
 
 
-class BlackScholesBarenblatt(FBSNN):
+class CallOptionsBasket(FBSNN):
     def __init__(self, Xi, T, M, N, D, Mm, layers, mode, activation):
         # Constructor for the BlackScholesBarenblatt class
         # Initializes a new instance with specified parameters for the neural network
@@ -29,15 +29,14 @@ class BlackScholesBarenblatt(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        return 0.05 * (Y - torch.sum(X * Z, dim=1, keepdim=True))  # M x 1
+        return 0.05 * (Y - torch.sum(X * Z, dim=1, keepdim=True)) # M x 1
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        underlying = torch.sum(X, dim=1, keepdim=True)
-        value = torch.maximum(underlying - self.strike * self.D, torch.tensor(0.0))        
-        return value  # M x 1
+        temp = torch.sum(X, dim=1, keepdim=True)
+        return torch.maximum(temp - self.strike, torch.tensor(0.0))
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
@@ -51,35 +50,22 @@ class BlackScholesBarenblatt(FBSNN):
         # X: Batch of current states, size M x D
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
-
-        # Assuming sigma is the volatility scalar, in this case, 0.4
-        sigma = 0.4
-
-        L = torch.from_numpy(self.L).float().to(self.device)  # D x D
+        # Each matrix is scaled by 0.4 times the corresponding state in X
+        return 0.4 * torch.diag_embed(X)  # M x D x D
 
 
-        # The covariance matrix is sigma^2 times the correlation matrix, so the diffusion matrix in its simplest form
-        # would be the identity matrix scaled by sigma, transformed by L to incorporate correlations.
-        # However, since L already captures the correlation, we directly use it scaled by sigma for the diffusion.
-
-        # # Create a diffusion matrix that incorporates correlations
-        diffusion_matrix = sigma * L # D x D
-       
-        return diffusion_matrix.unsqueeze(0).repeat(self.M, 1, 1) # sigma * torch.diag_embed(X) #    # M x D x D
-
-
-def u_exact(T, t, X):
-    # Calculates the exact solution for the Black Scholes Barenblatt equation
-    # Parameters:
-    # T: The terminal time, a vector of size (N+1) x 1. Represents the final time in the time discretization
-    # t: The current time, a vector of size (N+1) x 1. Represents the time steps in the time discretization
-    # X: The current state, an array of size (N+1) x D. Represents the state variables at each time step
+# def u_exact(T, t, X):
+#     # Calculates the exact solution for the Black Scholes Barenblatt equation
+#     # Parameters:
+#     # T: The terminal time, a vector of size (N+1) x 1. Represents the final time in the time discretization
+#     # t: The current time, a vector of size (N+1) x 1. Represents the time steps in the time discretization
+#     # X: The current state, an array of size (N+1) x D. Represents the state variables at each time step
     
-    r = 0.05         # Represents the risk-free interest rate
-    sigma_max = 0.4  # Represents the maximum volatility
+#     r = 0.05         # Represents the risk-free interest rate
+#     sigma_max = 0.4  # Represents the maximum volatility
 
-    # The exact solution is calculated using an exponential term and a summation term
-    # The exponential term accounts for the time value of money and volatility
-    # The summation term represents the square of the state variables summed across the D dimensions
-    # The solution is computed for each time step and state, resulting in a vector of size (N+1) x 1
-    return np.exp((r + sigma_max ** 2) * (T - t))  * np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 3, 0) # np.sum(X ** 2, 1, keepdims=True)  # (N+1) x 1
+#     # The exact solution is calculated using an exponential term and a summation term
+#     # The exponential term accounts for the time value of money and volatility
+#     # The summation term represents the square of the state variables summed across the D dimensions
+#     # The solution is computed for each time step and state, resulting in a vector of size (N+1) x 1
+#     return np.exp((r + sigma_max ** 2) * (T - t))  * np.maximum(np.sum(X, 1, keepdims=True) - 0.5 * 3, 0) # np.sum(X ** 2, 1, keepdims=True)  # (N+1) x 1

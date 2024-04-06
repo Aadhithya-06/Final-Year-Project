@@ -9,7 +9,7 @@ import torch.optim as optim
 from Models import *
 
 
-class FBSNN(ABC):
+class CorrFBSNN(ABC):
     def __init__(self, Xi, T, M, N, D, Mm, layers, mode, activation):
         # Constructor for the FBSNN class
         # Initializes the neural network with specified parameters and architecture
@@ -43,8 +43,8 @@ class FBSNN(ABC):
         self.N = N  # number of time snapshots
         self.D = D  # number of dimensions
         self.Mm = Mm  # number of discretization points for the SDE
-        # self.strike = 0.5  # strike price
-        # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
+        self.strike = 1 * self.D  # strike price
+        self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
         self.mode = mode  # architecture of the neural network
         self.activation = activation  # activation function        # Initialize the activation function based on the provided parameter
@@ -158,7 +158,6 @@ class FBSNN(ABC):
             t1 = t[:, n + 1, :]
             W1 = W[:, n + 1, :]
 
-            # Compute the next state using the Euler-Maruyama method
             X1 = X0 + self.mu_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.squeeze(
                 torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1)), dim=-1)
             
@@ -166,7 +165,7 @@ class FBSNN(ABC):
             Y1_tilde = Y0 + self.phi_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.sum(
                 Z0 * torch.squeeze(torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1))), dim=1,
                 keepdim=True)
-            
+
             # Obtain the network output and its gradient at the next state
             Y1, Z1 = self.net_u(t1, X1)
 
@@ -215,7 +214,7 @@ class FBSNN(ABC):
 
         # Generate Brownian increments for each trajectory and time snapshot
         DW_uncorrelated = np.sqrt(dt) * np.random.normal(size=(M, N, D))
-        DW[:, 1:, :] = DW_uncorrelated # np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) # Apply Cholesky matrix to introduce correlations
+        DW[:, 1:, :] = np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) # Apply Cholesky matrix to introduce correlations
 
         # Cumulatively sum the time steps and Brownian increments to get the actual time values and Brownian paths
         t = np.cumsum(Dt, axis=1)  # Cumulative time for each trajectory and time snapshot
