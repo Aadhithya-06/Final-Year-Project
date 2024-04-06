@@ -20,6 +20,7 @@ class FBSNN(ABC):
         # M: Number of trajectories (batch size)
         # N: Number of time snapshots
         # D: Number of dimensions for the problem
+        # Mm: Number of discretization points for the SDE
         # layers: List indicating the size of each layer in the neural network
         # mode: Specifies the architecture of the neural network (e.g., 'FC' for fully connected)
         # activation: Activation function to be used in the neural network
@@ -42,7 +43,7 @@ class FBSNN(ABC):
         self.N = N  # number of time snapshots
         self.D = D  # number of dimensions
         self.Mm = Mm  # number of discretization points for the SDE
-        self.strike = 0.5  # strike price
+        # self.strike = 0.5  # strike price
         # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
         self.mode = mode  # architecture of the neural network
@@ -249,9 +250,9 @@ class FBSNN(ABC):
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
             if it >= 2000:
-                self.N = int(self.Mm ** (int(it / 2000) + 1))
+                self.N = int(np.ceil(self.Mm ** (int(it / 2000) + 1)))
             else:
-                self.N = int(self.Mm)
+                self.N = int(np.ceil(self.Mm))
 
             # Zero the gradients before each iteration
             self.optimizer.zero_grad()
