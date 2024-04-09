@@ -30,7 +30,7 @@ class CallOption(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        return 0.05 * (Y - torch.sum(X * Z, dim=1, keepdim=True))  # M x 1
+        return 0.05 * (Y)  # M x 1
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
