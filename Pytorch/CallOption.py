@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 import time
 
-from UncorrelatedFBSNNs import FBSNN
+from FBSNNs import FBSNN
 
 
 class CallOption(FBSNN):
@@ -37,13 +37,13 @@ class CallOption(FBSNN):
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
         temp = torch.sum(X, dim=1, keepdim=True)
-        return torch.maximum(temp - 1, torch.tensor(0.0))  # M x 1
+        return torch.maximum(temp - 1 * self.D, torch.tensor(0.0))  # M x 1
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        return super().mu_tf(t, X, Y, Z)  # M x D
+        return 0.05 * X  # M x D
 
     def sigma_tf(self, t, X, Y):  
         # Diffusion coefficient of the underlying stochastic process for a batch

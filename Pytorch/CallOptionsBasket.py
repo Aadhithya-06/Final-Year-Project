@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 import time
 
-from UncorrelatedFBSNNs import FBSNN
+from FBSNNs import FBSNN
 
 
 class CallOptionsBasket(FBSNN):
@@ -29,7 +29,7 @@ class CallOptionsBasket(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        return 0.05 * (Y - torch.sum(X * Z, dim=1, keepdim=True)) # M x 1
+        return 0.05 * (Y) # M x 1
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
@@ -42,7 +42,7 @@ class CallOptionsBasket(FBSNN):
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        return super().mu_tf(t, X, Y, Z)  # M x D
+        return 0.05 * X # M x D
 
     def sigma_tf(self, t, X, Y):  
         # Diffusion coefficient of the underlying stochastic process for a batch

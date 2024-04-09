@@ -43,7 +43,7 @@ class FBSNN(ABC):
         self.N = N  # number of time snapshots
         self.D = D  # number of dimensions
         self.Mm = Mm  # number of discretization points for the SDE
-        self.strike = 1 * self.D  # strike price
+        self.strike = 1.0 * self.D  # strike price
         # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
         self.mode = mode  # architecture of the neural network
@@ -159,12 +159,14 @@ class FBSNN(ABC):
             W1 = W[:, n + 1, :]
 
             # Compute the next state using the Euler-Maruyama method
-            X1 = (1 + 0.05 * (t1 - t0)) * X0 + 0.4 * X0 * (W1 - W0)
+            X1 = X0 + self.mu_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.squeeze(
+                torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1)), dim=-1)
             
             # Compute the predicted value (Y1_tilde) at the next state
-            Y1_tilde = Y0 + 0.05 * Y0 * (t1 - t0) + torch.sum(
-                Z0 * (W1 - W0), dim=1, keepdim=True)
-
+            Y1_tilde = Y0 + self.phi_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.sum(
+                Z0 * torch.squeeze(torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1))), dim=1,
+                keepdim=True)
+            
             # Obtain the network output and its gradient at the next state
             Y1, Z1 = self.net_u(t1, X1)
 
@@ -247,10 +249,10 @@ class FBSNN(ABC):
         start_time = time.time()
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
-            if it >= 4000:
-                self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
-            elif it < 4000:
-                self.N = int(np.ceil(self.Mm))
+            # if it >= 4000:
+            #     self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
+            # elif it < 4000:
+            #     self.N = int(np.ceil(self.Mm))
 
             # Zero the gradients before each iteration
             self.optimizer.zero_grad()
