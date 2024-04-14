@@ -9,7 +9,7 @@ import torch.optim as optim
 from Models import *
 
 
-class CorrFBSNN(ABC):
+class FBSNN(ABC):
     def __init__(self, Xi, T, M, N, D, Mm, layers, mode, activation):
         # Constructor for the FBSNN class
         # Initializes the neural network with specified parameters and architecture
@@ -248,8 +248,10 @@ class CorrFBSNN(ABC):
         start_time = time.time()
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
-            if it >= 4000:
+            if it >= 4000 and it < 20000:
                 self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
+                if(it % 4000 == 0):
+                    print('N: ', self.N)
             elif it < 4000:
                 self.N = int(np.ceil(self.Mm))
 
@@ -310,7 +312,7 @@ class CorrFBSNN(ABC):
 
     def generate_cholesky(self):
         # Variances of the individual assets
-        rho = 0.5 
+        rho = 0.5
 
         # Create an identity matrix for the diagonal
         correlation_matrix = np.eye(self.D)
