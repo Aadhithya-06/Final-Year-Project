@@ -143,10 +143,9 @@ class XVAFBSNN(ABC):
         C_list = []  # List to store the model option price at each time step.
 
         # Initial time and Brownian motion increment.
-        t0 = t[:, 0, :]
-        W0 = W[:, 0, :]
-        C0 = C[:, 0, :]
- 
+        t0 = t[:, 0, :].reshape(64,1,1)[0]
+        W0 = W[:, 0, :].reshape(64,1,100)[0]
+        C0 = C[:, 0, :].reshape(64,1,1)[0]
 
         # Initial state for all trajectories
         Y0, Z0 = self.net_u(t0, C0)  # Obtain the network output and its gradient at the initial state
@@ -158,9 +157,9 @@ class XVAFBSNN(ABC):
         # Iterate over each time step
         for n in range(0, self.N):
             # Next time step and Brownian motion increment
-            t1 = t[:, n + 1, :]
-            W1 = W[:, n + 1, :]
-            C1 = C[:, n + 1, :]
+            t1 = t[:, n + 1, :].reshape(64,1,1)[0]
+            W1 = W[:, n + 1, :].reshape(64,1,100)[0]
+            C1 = C[:, n + 1, :].reshape(64,1,1)[0]
             
             # Compute the predicted value (Y1_tilde) at the next state
             Y1_tilde = Y0 + self.phi_tf(t0, C0, Y0, Z0) * (t1 - t0) + torch.sum(

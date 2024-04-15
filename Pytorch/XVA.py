@@ -41,12 +41,12 @@ class XVA(XVAFBSNN):
         intensityB = 0.01
 
         discount = (rate + intensityC + intensityB) * Y
-        # cva = (1-R_C) * torch.maximum(collateral-C, torch.tensor(0.0)) * intensityC
-        # dva = (1-R_B) * torch.maximum(C-collateral, torch.tensor(0.0)) * intensityB
-        fva = (r_fl - rate) * torch.maximum(C-Y-collateral, torch.tensor(0.0)) + (r_fb - rate) * torch.maximum(collateral+Y-C, torch.tensor(0.0))
+        cva = (1-R_C) * torch.maximum(collateral-C, torch.tensor(0.0)) * intensityC
+        dva = (1-R_B) * torch.maximum(C-collateral, torch.tensor(0.0)) * intensityB
+        # fva = (r_fl - rate) * torch.maximum(C-Y-collateral, torch.tensor(0.0)) + (r_fb - rate) * torch.maximum(collateral+Y-C, torch.tensor(0.0))
         # colva = (r_cl - rate) * torch.maximum(collateral, torch.tensor(0.0)) + (r_cb - rate) * torch.maximum(-collateral, torch.tensor(0.0))
 
-        return -fva + discount #cva - dva - fva - colva + discount  # M x 1
+        return cva - dva + discount #-fva + discount #cva - dva - fva - colva + discount  # M x 1
 
     def g_tf(self, C):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
