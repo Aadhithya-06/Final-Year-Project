@@ -169,7 +169,6 @@ class FBSNN(ABC):
             
             # Obtain the network output and its gradient at the next state
             Y1, Z1 = self.net_u(t1, X1)
-
             # Add the squared difference between Y1 and Y1_tilde to the loss
             loss += torch.sum(torch.pow(Y1 - Y1_tilde, 2))
 
@@ -266,6 +265,8 @@ class FBSNN(ABC):
             # Perform backpropagation
             self.optimizer.zero_grad()  # Zero the gradients again to ensure correct gradient accumulation
             loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            
             self.optimizer.step()  # Update the network parameters based on the gradients
 
             # Store the current loss value for later averaging
