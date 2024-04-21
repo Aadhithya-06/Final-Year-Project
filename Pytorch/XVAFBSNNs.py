@@ -154,6 +154,10 @@ class XVAFBSNN(ABC):
         C_list.append(C0)
         Y_list.append(Y0)
 
+        # print(W0.shape)
+        # print(C0.shape)
+        # print("----------------")
+
         # Iterate over each time step
         for n in range(0, self.N):
             # Next time step and Brownian motion increment
@@ -198,6 +202,7 @@ class XVAFBSNN(ABC):
         Xi = np.array([1] * int(self.D))[None, :]
         t, W = self.portfolio_model.fetch_minibatch()
         _, C = self.portfolio_model.predict(Xi, t, W)
+        C = C * 100
         return t, W, C
 
     def train(self, N_Iter, learning_rate):
