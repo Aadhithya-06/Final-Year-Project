@@ -261,7 +261,6 @@ class FBSNN(ABC):
 
             # Compute the loss for the current batch
             loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
-
             # Perform backpropagation
             self.optimizer.zero_grad()  # Zero the gradients again to ensure correct gradient accumulation
             loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
@@ -284,7 +283,6 @@ class FBSNN(ABC):
                 self.training_loss.append(loss_temp.mean())  # Append the average loss
                 loss_temp = np.array([])  # Reset the temporary loss array
                 self.iteration.append(it)  # Append the current iteration number
-
         # Stack the iteration and training loss for plotting
         graph = np.stack((self.iteration, self.training_loss))
 
