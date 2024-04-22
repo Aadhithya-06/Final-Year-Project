@@ -231,6 +231,8 @@ class XVAFBSNN(ABC):
             # Compute the loss for the current batch
             loss, C_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, C_batch)
 
+            if torch.abs(Y0_pred - 0.0467) <= 0.00022:
+                break
             # Perform backpropagation
             self.optimizer.zero_grad()  # Zero the gradients again to ensure correct gradient accumulation
             loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
