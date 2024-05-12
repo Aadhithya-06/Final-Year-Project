@@ -45,26 +45,13 @@ class BlackScholesBarenblatt(FBSNN):
         return super().mu_tf(t, X, Y, Z)  # M x D
 
     def sigma_tf(self, t, X, Y):  
-        # Diffusion coefficient of the underlying stochastic process for a batch
-        # t: Batch of current times, size M x 1
-        # X: Batch of current states, size M x D
-        # Y: Batch of current value functions, size M x 1 (not used in this method)
-        # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
-        # Each matrix is scaled by 0.4 times the corresponding state in X
-        sigma = 0.4
-
-        L = torch.from_numpy(self.L).float().to(self.device)  # D x D
-
-
-        # The covariance matrix is sigma^2 times the correlation matrix, so the diffusion matrix in its simplest form
-        # would be the identity matrix scaled by sigma, transformed by L to incorporate correlations.
-        # However, since L already captures the correlation, we directly use it scaled by sigma for the diffusion.
-
-        # # Create a diffusion matrix that incorporates correlations
-        sigma_diag = 0.4 * torch.diag_embed(X)
-        diffusion_matrix = torch.matmul(L, sigma_diag) # M x D x D
-       
-        return diffusion_matrix # M x D x D
+         # Diffusion coefficient of the underlying stochastic process for a batch
+         # t: Batch of current times, size M x 1
+         # X: Batch of current states, size M x D
+         # Y: Batch of current value functions, size M x 1 (not used in this method)
+         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
+         # Each matrix is scaled by 0.4 times the corresponding state in X
+         return 0.4 * torch.diag_embed(X)  # M x D x D
 
 def u_exact(T, t, X):
     # Calculates the exact solution for the Black Scholes Barenblatt equation
