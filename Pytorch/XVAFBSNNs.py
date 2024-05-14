@@ -70,12 +70,6 @@ class XVAFBSNN(ABC):
         elif self.mode == "Resnet":
             # Residual Network architecture
             self.model = Resnet(layers, stable=False, activation=self.activation_function).to(self.device)
-        elif self.mode == "Verlet":
-            # Verlet Network architecture
-            self.model = VerletNet(layers, activation=self.activation_function).to(self.device)
-        elif self.mode == "SDEnet":
-            # SDE Network architecture
-            self.model = SDEnet(layers, activation=self.activation_function).to(self.device)
 
         # Apply a custom weights initialization to the model.
         self.model.apply(self.weights_init)

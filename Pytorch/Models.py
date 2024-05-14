@@ -51,104 +51,31 @@ class Resnet(nn.Module):
         shortcut = out
         if self.stable:
             out = self.stable_forward(self.layer2, out)
-            out += self.layer2_input(u)
+            out = out + self.layer2_input(u)
         else:
             out = self.layer2(out)
         out = self.activation(out)
-        out += shortcut
+        out = out + shortcut
 
         shortcut = out
         if self.stable:
             out = self.stable_forward(self.layer3, out)
-            out += self.layer3_input(u)
+            out = out + self.layer3_input(u)
         else:
             out = self.layer3(out)
         out = self.activation(out)
-        out += shortcut
+        out = out + shortcut
 
         shortcut = out
         if self.stable:
             out = self.stable_forward(self.layer4, out)
-            out += self.layer4_input(u)
+            out = out + self.layer4_input(u)
         else:
             out = self.layer4(out)
 
         out = self.activation(out)
-        out += shortcut
+        out = out + shortcut
 
         out = self.layer5(out)
-
-        return out
-
-
-class SDEnet(nn.Module):
-
-    def __init__(self, layers, activation):
-        super(SDEnet, self).__init__()
-
-        self.layers = nn.ModuleList()
-        self.brownian = nn.ModuleList()
-
-        for i in range(len(layers) - 1):
-            self.layers.append(nn.Linear(in_features=layers[i], out_features=layers[i + 1]))
-            if i > 0 and i < len(layers) - 2:
-                self.brownian.append(nn.Linear(in_features=layers[i], out_features=1, bias=False))
-
-        self.activation = activation
-        self.epsilon = 1e-4
-        self.h = 0.1
-
-    def product(self, layer, out):
-        weights = layer.weight
-        RtR = torch.matmul(weights.t(), weights)
-        A = RtR + torch.eye(RtR.shape[0]).cuda() * self.epsilon
-
-        return F.linear(out, A, layer.bias)
-
-    def forward(self, x):
-        out = self.layers[0](x)
-        out = self.activation(out)
-
-        for i, layer in enumerate(self.layers[1:-1]):
-            shortcut = out
-            out = layer(out)
-            out = shortcut + self.h * self.activation(out) + self.h ** (1 / 2) * self.product(self.brownian[i],
-                                                                                              torch.rand_like(out))
-        out = self.layers[-1](out)
-
-        return out
-
-
-class VerletNet(nn.Module):
-
-    def __init__(self, layers, activation):
-        super(VerletNet, self).__init__()
-
-        self.layers = nn.ModuleList()
-        for i in range(len(layers) - 1):
-            self.layers.append(nn.Linear(in_features=layers[i], out_features=layers[i + 1]))
-
-        self.h = 0.5
-        self.activation = activation
-
-    def transpose(self, layer, out):
-
-        return F.linear(out, layer.weight.t(), layer.bias)
-
-    def forward(self, x):
-
-        out = self.layers[0](x)
-        out = self.activation(out)
-
-        z = torch.zeros_like(out)
-
-        for layer in self.layers[1:-1]:
-            shortcut = out
-            out = self.transpose(layer, out)
-            z = z - self.activation(out)
-            out = layer(z)
-            out = shortcut + self.activation(out)
-
-        out = self.layers[-1](out)
 
         return out
