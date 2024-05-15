@@ -244,7 +244,8 @@ class FBSNN(ABC):
         start_time = time.time()
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
-            if it >= 4000 and it < 24000:
+            
+            if it >= 4000 and it < 20000:
                 self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
             elif it < 4000:
                 self.N = int(np.ceil(self.Mm))
