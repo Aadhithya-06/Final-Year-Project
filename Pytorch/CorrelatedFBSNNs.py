@@ -306,7 +306,7 @@ class FBSNN(ABC):
 
     def generate_cholesky(self):
         # Variances of the individual assets
-        rho = 0.8
+        rho = 0.5
 
         # Create an identity matrix for the diagonal
         correlation_matrix = np.eye(self.D)
