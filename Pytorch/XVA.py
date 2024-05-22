@@ -29,16 +29,16 @@ class XVA(XVAFBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the XVA term for each instance in the batch, size M x 1
-        rate = 0.01
-        r_fl = 0.04
-        r_fb = 0.04
-        r_cl = 0.05
-        r_cb = 0.05
-        R_C = 0.3
-        R_B = 0.4
-        collateral = 0
-        intensityC = 0.1
-        intensityB = 0.01
+        rate = 0.01 # Risk-free interest rate
+        r_fl = 0.04 # Funding rate for long position
+        r_fb = 0.04 # Funding rate for short position
+        r_cl = 0.05 # Collateral rate for long position
+        r_cb = 0.05 # Collateral rate for short position
+        R_C = 0.3 # Recovery rate for counterparty
+        R_B = 0.4 # Recovery rate for bank
+        collateral = 0 # Collateral
+        intensityC = 0.1 # Intensity for counterparty
+        intensityB = 0.01 # Intensity for bank
 
         discount = (rate + intensityC + intensityB) * Y
         # cva = (1-R_C) * torch.maximum(collateral-C, torch.tensor(0.0)) * intensityC

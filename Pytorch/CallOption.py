@@ -30,7 +30,7 @@ class CallOption(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        return 0.05 * (Y)  # M x 1
+        return 0.05 * (Y)  # M x 1 #0.05 is the risk free rate
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
@@ -43,7 +43,7 @@ class CallOption(FBSNN):
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        return 0.05 * X  # M x D
+        return 0.05 * X  # M x D #0.05 is the risk free rate
 
     def sigma_tf(self, t, X, Y):  
         # Diffusion coefficient of the underlying stochastic process for a batch
@@ -52,20 +52,4 @@ class CallOption(FBSNN):
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
         # Each matrix is scaled by 0.4 times the corresponding state in X
-        return 0.4 * torch.diag_embed(X)  # M x D x D
-
-def u_exact(T, t, X):
-    # Calculates the exact solution for the Black Scholes Barenblatt equation
-    # Parameters:
-    # T: The terminal time, a vector of size (N+1) x 1. Represents the final time in the time discretization
-    # t: The current time, a vector of size (N+1) x 1. Represents the time steps in the time discretization
-    # X: The current state, an array of size (N+1) x D. Represents the state variables at each time step
-    
-    r = 0.05         # Represents the risk-free interest rate
-    sigma_max = 0.4  # Represents the maximum volatility
-
-    # The exact solution is calculated using an exponential term and a summation term
-    # The exponential term accounts for the time value of money and volatility
-    # The summation term represents the square of the state variables summed across the D dimensions
-    # The solution is computed for each time step and state, resulting in a vector of size (N+1) x 1
-    return np.exp((r + sigma_max ** 2) * (T - t)) * np.maximum(np.sum(X, 1, keepdims=True)-1,0)  # (N+1) x 1
+        return 0.4 * torch.diag_embed(X)  # M x D x D #0.4 is the volatility

@@ -44,7 +44,6 @@ class FBSNN(ABC):
         self.D = D  # number of dimensions
         self.Mm = Mm  # number of discretization points for the SDE
         self.strike = 1.0 * self.D  # strike price
-        # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
         self.mode = mode  # architecture of the neural network
         self.activation = activation  # activation function        # Initialize the activation function based on the provided parameter
@@ -267,7 +266,6 @@ class FBSNN(ABC):
 
             # Store the current loss value for later averaging
             loss_temp = np.append(loss_temp, loss.cpu().detach().numpy())
-
             # Print the training progress every 100 iterations
             if it % 100 == 0:
                 elapsed = time.time() - start_time  # Calculate the elapsed time
@@ -304,28 +302,6 @@ class FBSNN(ABC):
         # Return the predicted states and outputs
         # These predictions correspond to the neural network's estimation of the state and output at each time step
         return X_star, Y_star
-
-    def generate_cholesky(self):
-        # Variances of the individual assets
-        rho = 0.5 
-
-        # Create an identity matrix for the diagonal
-        correlation_matrix = np.eye(self.D)
-
-        # Set off-diagonal elements to rho
-        correlation_matrix[correlation_matrix == 0] = rho
-
-
-        # Check if the correlation matrix is valid
-        if not np.allclose(correlation_matrix, correlation_matrix.T):
-            raise ValueError("Correlation matrix is not symmetric.")
-        if np.any(np.linalg.eigvalsh(correlation_matrix) < 0):
-            raise ValueError("Correlation matrix is not positive semi-definite.")
-
-        # Standard deviations (square roots of variances)
-        L = np.linalg.cholesky(correlation_matrix)
-
-        return L
 
     def save_model(self, file_name):
         torch.save({

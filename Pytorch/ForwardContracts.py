@@ -29,22 +29,23 @@ class ForwardContracts(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        return 0.0 * (Y)  # M x 1
+        r = 0.01  # Risk-free interest rate
+        return r * (Y)  # M x 1
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        # underlying = torch.sum(X, dim=1, keepdim=True)
-        # value = torch.maximum(underlying - self.strike * self.D, torch.tensor(0.0)) 
-        value = torch.sum(X, dim=1, keepdim=True) - 1.0 * self.D
+        strike = 1.0 # Strike price       
+        value = torch.sum(X, dim=1, keepdim=True) - strike * self.D 
         return value  # M x 1
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        return 0.0 * X  # M x D
+        r = 0.01 # Risk-free interest rate
+        return r * X  # M x D
 
     def sigma_tf(self, t, X, Y):  
         # Diffusion coefficient of the underlying stochastic process for a batch
@@ -53,4 +54,5 @@ class ForwardContracts(FBSNN):
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
         # Each matrix is scaled by 0.4 times the corresponding state in X
-        return 0.25 * torch.diag_embed(X)  # M x D x D
+        sigma = 0.25 # Volatility
+        return sigma * torch.diag_embed(X)  # M x D x D

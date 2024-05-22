@@ -29,7 +29,8 @@ class CallOptionsBasket(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        return 0.01 * (Y) # M x 1
+        rate = 0.01  # Risk-free interest rate
+        return rate * (Y) # M x 1
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
@@ -42,7 +43,8 @@ class CallOptionsBasket(FBSNN):
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        return 0.01 * X # M x D
+        rate = 0.01
+        return rate * X # M x D
 
     def sigma_tf(self, t, X, Y):  
         # Diffusion coefficient of the underlying stochastic process for a batch
@@ -51,4 +53,5 @@ class CallOptionsBasket(FBSNN):
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
         # Each matrix is scaled by 0.4 times the corresponding state in X
-        return 0.25 * torch.diag_embed(X)  # M x D x D
+        sigma = 0.25 # Volatility
+        return sigma * torch.diag_embed(X)  # M x D x D
