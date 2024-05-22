@@ -36,8 +36,8 @@ class CallOption(FBSNN):
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        temp = torch.sum(X, dim=1, keepdim=True)
-        return torch.maximum(temp - 1 * self.D, torch.tensor(0.0))  # M x 1
+        temp = torch.sum(torch.maximum(X - 0.5, torch.tensor(0.0)), dim=1, keepdim=True)
+        return temp  # M x 1
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
