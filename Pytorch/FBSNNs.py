@@ -249,7 +249,7 @@ class FBSNN(ABC):
             elif it < 4000:
                 self.N = int(np.ceil(self.Mm))
 
-            Zero the gradients before each iteration
+            # Zero the gradients before each iteration
             self.optimizer.zero_grad()
 
             # Fetch a minibatch of time steps and Brownian motion paths
