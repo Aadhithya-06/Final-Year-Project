@@ -29,7 +29,7 @@ class ForwardContracts(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        r = 0.01  # Risk-free interest rate
+        r = 0.02  # Risk-free interest rate
         return r * (Y)  # M x 1
 
     def g_tf(self, X):  
@@ -44,7 +44,7 @@ class ForwardContracts(FBSNN):
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        r = 0.01 # Risk-free interest rate
+        r = 0.02 # Risk-free interest rate
         return r * X  # M x D
 
     def sigma_tf(self, t, X, Y):  
