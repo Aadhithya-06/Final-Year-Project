@@ -29,11 +29,11 @@ class XVA(XVAFBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the XVA term for each instance in the batch, size M x 1
-        rate = 0.01 # Risk-free interest rate
+        rate = 0.02 # Risk-free interest rate
         r_fl = 0.04 # Funding rate for long position
         r_fb = 0.04 # Funding rate for short position
-        r_cl = 0.05 # Collateral rate for long position
-        r_cb = 0.05 # Collateral rate for short position
+        r_cl = 0.00 # Collateral rate for long position
+        r_cb = 0.00 # Collateral rate for short position
         R_C = 0.3 # Recovery rate for counterparty
         R_B = 0.4 # Recovery rate for bank
         collateral = 0 # Collateral
@@ -43,8 +43,8 @@ class XVA(XVAFBSNN):
         discount = (rate + intensityC + intensityB) * Y
         # cva = (1-R_C) * torch.maximum(collateral-C, torch.tensor(0.0)) * intensityC
         # dva = (1-R_B) * torch.maximum(C-collateral, torch.tensor(0.0)) * intensityB
-        fva = (r_fl - rate) * torch.maximum(C-Y-collateral, torch.tensor(0.0)) + (r_fb - rate) * torch.maximum(collateral+Y-C, torch.tensor(0.0))
-        # colva = (r_cl - rate) * torch.maximum(collateral, torch.tensor(0.0)) + (r_cb - rate) * torch.maximum(-collateral, torch.tensor(0.0))
+        fva = (r_fl - rate) * torch.maximum(C-Y-collateral, torch.tensor(0.0)) - (r_fb - rate) * torch.maximum(collateral+Y-C, torch.tensor(0.0))
+        # colva = (r_cl - rate) * torch.maximum(collateral, torch.tensor(0.0)) - (r_cb - rate) * torch.maximum(-collateral, torch.tensor(0.0))
 
         return -fva + discount #cva - dva + discount #cva - dva - fva - colva + discount  # M x 1
 

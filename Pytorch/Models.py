@@ -31,7 +31,7 @@ class Resnet(nn.Module):
         self.epsilon = 0.01
         self.stable = stable
 
-    def stable_forward(self, layer, out):  # Building block for the NAIS-Net
+    def project(self, layer, out):  # Building block for the NAIS-Net
         weights = layer.weight
         delta = 1 - 2 * self.epsilon
         RtR = torch.matmul(weights.t(), weights)
@@ -50,7 +50,7 @@ class Resnet(nn.Module):
 
         shortcut = out
         if self.stable:
-            out = self.stable_forward(self.layer2, out)
+            out = self.project(self.layer2, out)
             out = out + self.layer2_input(u)
         else:
             out = self.layer2(out)
@@ -61,7 +61,7 @@ class Resnet(nn.Module):
 
         # shortcut = out
         # if self.stable:
-        #     out = self.stable_forward(self.layer3, out)
+        #     out = self.project(self.layer3, out)
         #     out = out + self.layer3_input(u)
         # else:
         #     out = self.layer3(out)
@@ -71,7 +71,7 @@ class Resnet(nn.Module):
 
         # shortcut = out
         # if self.stable:
-        #     out = self.stable_forward(self.layer4, out)
+        #     out = self.project(self.layer4, out)
         #     out = out + self.layer4_input(u)
         # else:
         #     out = self.layer4(out)
