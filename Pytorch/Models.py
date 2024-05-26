@@ -12,19 +12,24 @@ class Sine(nn.Module):
         return torch.sin(x)
 
 
-class Resnet(nn.Module):
+class Naisnet(nn.Module):
 
     def __init__(self, layers, stable, activation):
-        super(Resnet, self).__init__()
+        super(Naisnet, self).__init__()
 
+        self.layers = layers
         self.layer1 = nn.Linear(in_features=layers[0], out_features=layers[1])
         self.layer2 = nn.Linear(in_features=layers[1], out_features=layers[2])
         self.layer2_input = nn.Linear(in_features=layers[0], out_features=layers[2])
         self.layer3 = nn.Linear(in_features=layers[2], out_features=layers[3])
-        # self.layer3_input = nn.Linear(in_features=layers[0], out_features=layers[3])
-        # self.layer4 = nn.Linear(in_features=layers[3], out_features=layers[4])
-        # self.layer4_input = nn.Linear(in_features=layers[0], out_features=layers[4])
-        # self.layer5 = nn.Linear(in_features=layers[4], out_features=layers[5])
+        if len(layers) == 5:
+            self.layer3_input = nn.Linear(in_features=layers[0], out_features=layers[3])
+            self.layer4 = nn.Linear(in_features=layers[3], out_features=layers[4])
+        elif len(layers) == 6:
+            self.layer3_input = nn.Linear(in_features=layers[0], out_features=layers[3])
+            self.layer4 = nn.Linear(in_features=layers[3], out_features=layers[4])
+            self.layer4_input = nn.Linear(in_features=layers[0], out_features=layers[4])
+            self.layer5 = nn.Linear(in_features=layers[4], out_features=layers[5])
 
         self.activation = activation
 
@@ -57,28 +62,45 @@ class Resnet(nn.Module):
         out = self.activation(out)
         out = out + shortcut
 
-        out = self.layer3(out)
+        if len(self.layers) == 4:
+            out = self.layer3(out)
+            return out
 
-        # shortcut = out
-        # if self.stable:
-        #     out = self.project(self.layer3, out)
-        #     out = out + self.layer3_input(u)
-        # else:
-        #     out = self.layer3(out)
-        # out = self.activation(out)
-        # out = out + shortcut
+        if len(self.layers) == 5:
+            shortcut = out
+            if self.stable:
+                out = self.project(self.layer3, out)
+                out = out + self.layer3_input(u)
+            else:
+                out = self.layer3(out)
+            out = self.activation(out)
+            out = out + shortcut
+
+            out = self.layer4(out)
+            return out
+        
+        if len(self.layers) == 6:
+            shortcut = out
+            if self.stable:
+                out = self.project(self.layer3, out)
+                out = out + self.layer3_input(u)
+            else:
+                out = self.layer3(out)
+            out = self.activation(out)
+            out = out + shortcut
 
 
-        # shortcut = out
-        # if self.stable:
-        #     out = self.project(self.layer4, out)
-        #     out = out + self.layer4_input(u)
-        # else:
-        #     out = self.layer4(out)
+            shortcut = out
+            if self.stable:
+                out = self.project(self.layer4, out)
+                out = out + self.layer4_input(u)
+            else:
+                out = self.layer4(out)
 
-        # out = self.activation(out)
-        # out = out + shortcut
+            out = self.activation(out)
+            out = out + shortcut
 
-        # out = self.layer5(out)
+            out = self.layer5(out)
+            return out
 
         return out

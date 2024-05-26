@@ -64,12 +64,9 @@ class XVAFBSNN(ABC):
             self.layers.append(nn.Linear(in_features=layers[-2], out_features=layers[-1]))
             self.model = nn.Sequential(*self.layers).to(self.device)
 
-        elif self.mode == "NAIS-Net":
+        elif self.mode == "Naisnet":
             # NAIS-Net architecture
-            self.model = Resnet(layers, stable=True, activation=self.activation_function).to(self.device)
-        elif self.mode == "Resnet":
-            # Residual Network architecture
-            self.model = Resnet(layers, stable=False, activation=self.activation_function).to(self.device)
+            self.model = Naisnet(layers, stable=True, activation=self.activation_function).to(self.device)
 
         # Apply a custom weights initialization to the model.
         self.model.apply(self.weights_init)
@@ -137,10 +134,9 @@ class XVAFBSNN(ABC):
         C_list = []  # List to store the model option price at each time step.
 
         # Initial time and Brownian motion increment.
-        t0 = t[:, 0, :].reshape(self.portfolio_model.M,1,1)[0]
-        W0 = W[:, 0, :].reshape(self.portfolio_model.M,1,self.portfolio_model.D)[0]
-        C0 = C[:, 0, :].reshape(self.portfolio_model.M,1,1)[0]
-
+        t0 = t[:, 0, :].reshape(self.portfolio_model.M,1)
+        W0 = W[:, 0, :].reshape(self.portfolio_model.M,self.portfolio_model.D)
+        C0 = C[:, 0, :].reshape(self.portfolio_model.M,1)
         # Initial state for all trajectories
         Y0, Z0 = self.net_u(t0, C0)  # Obtain the network output and its gradient at the initial state
 
@@ -151,14 +147,13 @@ class XVAFBSNN(ABC):
         # Iterate over each time step
         for n in range(0, self.N):
             # Next time step and Brownian motion increment
-            t1 = t[:, n + 1, :].reshape(self.portfolio_model.M,1,1)[0]
-            W1 = W[:, n + 1, :].reshape(self.portfolio_model.M,1,self.portfolio_model.D)[0]
-            C1 = C[:, n + 1, :].reshape(self.portfolio_model.M,1,1)[0]
+            t1 = t[:, n + 1, :].reshape(self.portfolio_model.M,1)
+            W1 = W[:, n + 1, :].reshape(self.portfolio_model.M, self.portfolio_model.D)
+            C1 = C[:, n + 1, :].reshape(self.portfolio_model.M, 1)
             
             # Compute the predicted value (Y1_tilde) at the next state
             Y1_tilde = Y0 + self.phi_tf(t0, C0, Y0, Z0) * (t1 - t0) + torch.sum(
-                Z0 * (W1 - W0), dim=1, keepdim=True)
-            
+                Z0 * (W1 - W0), dim=1, keepdim=True)        
             # Obtain the network output and its gradient at the next state
             Y1, Z1 = self.net_u(t1, C1)
 

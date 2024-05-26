@@ -52,6 +52,8 @@ class FBSNN(ABC):
             self.activation_function = Sine()
         elif activation == "ReLU":
             self.activation_function = nn.ReLU()
+        elif activation == "Tanh":
+            self.activation_function = nn.Tanh()
 
         # Initialize the neural network based on the chosen mode
         if self.mode == "FC":
@@ -63,12 +65,9 @@ class FBSNN(ABC):
             self.layers.append(nn.Linear(in_features=layers[-2], out_features=layers[-1]))
             self.model = nn.Sequential(*self.layers).to(self.device)
 
-        elif self.mode == "NAIS-Net":
+        elif self.mode == "Naisnet":
             # NAIS-Net architecture
-            self.model = Resnet(layers, stable=True, activation=self.activation_function).to(self.device)
-        elif self.mode == "Resnet":
-            # Residual Network architecture
-            self.model = Resnet(layers, stable=False, activation=self.activation_function).to(self.device)
+            self.model = Naisnet(layers, stable=True, activation=self.activation_function).to(self.device)
 
         # Apply a custom weights initialization to the model.
         self.model.apply(self.weights_init)

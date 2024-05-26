@@ -64,12 +64,9 @@ class FBSNN(ABC):
             self.layers.append(nn.Linear(in_features=layers[-2], out_features=layers[-1]))
             self.model = nn.Sequential(*self.layers).to(self.device)
 
-        elif self.mode == "NAIS-Net":
+        elif self.mode == "Naisnet":
             # NAIS-Net architecture
-            self.model = Resnet(layers, stable=True, activation=self.activation_function).to(self.device)
-        elif self.mode == "Resnet":
-            # Residual Network architecture
-            self.model = Resnet(layers, stable=False, activation=self.activation_function).to(self.device)
+            self.model = Naisnet(layers, stable=True, activation=self.activation_function).to(self.device)
 
         # Apply a custom weights initialization to the model.
         self.model.apply(self.weights_init)
@@ -152,7 +149,6 @@ class FBSNN(ABC):
             # Next time step and Brownian motion increment
             t1 = t[:, n + 1, :]
             W1 = W[:, n + 1, :]
-
             # Compute the next state using the Euler-Maruyama method
             X1 = X0 + self.mu_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.squeeze(
                 torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1)), dim=-1)

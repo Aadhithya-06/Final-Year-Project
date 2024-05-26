@@ -37,8 +37,8 @@ class XVA(XVAFBSNN):
         R_C = 0.3 # Recovery rate for counterparty
         R_B = 0.4 # Recovery rate for bank
         collateral = 0 # Collateral
-        intensityC = 0.1 # Intensity for counterparty
-        intensityB = 0.01 # Intensity for bank
+        intensityC = 0 # Intensity for counterparty
+        intensityB = 0 # Intensity for bank
 
         discount = (rate + intensityC + intensityB) * Y
         # cva = (1-R_C) * torch.maximum(collateral-C, torch.tensor(0.0)) * intensityC
