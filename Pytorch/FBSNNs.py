@@ -202,7 +202,6 @@ class FBSNN(ABC):
 
         # Populate the time step sizes for each trajectory and time snapshot (excluding the initial time)
         Dt[:, 1:, :] = dt
-
         # Generate Brownian increments for each trajectory and time snapshot
         DW_uncorrelated = np.sqrt(dt) * np.random.normal(size=(M, N, D))
         DW[:, 1:, :] = DW_uncorrelated # np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) # Apply Cholesky matrix to introduce correlations
@@ -240,10 +239,10 @@ class FBSNN(ABC):
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
             
-            # if it >= 4000 and it < 20000:
-            #     self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
-            # elif it < 4000:
-            #     self.N = int(np.ceil(self.Mm))
+            if it >= 4000 and it < 20000:
+                self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
+            elif it < 4000:
+                self.N = int(np.ceil(self.Mm))
 
             # Zero the gradients before each iteration
             self.optimizer.zero_grad()

@@ -30,20 +30,22 @@ class CallOption(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        return 0.05 * (Y)  # M x 1 #0.05 is the risk free rate
+        rate = 0.05  # Risk-free interest rate
+        return rate * (Y)   # M x 1 #0.05 is the risk free rate
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        temp = torch.maximum(X - 1.0, torch.tensor(0.0))
+        temp = torch.sum(torch.maximum(X - 1.0, torch.tensor(0.0)), dim=1, keepdim=True)
         return temp  # M x 1
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        return 0.05 * X  # M x D #0.05 is the risk free rate
+        rate = 0.05
+        return rate * X # M x D
 
     def sigma_tf(self, t, X, Y):  
         # Diffusion coefficient of the underlying stochastic process for a batch
