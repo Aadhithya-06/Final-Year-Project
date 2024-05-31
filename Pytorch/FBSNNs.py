@@ -279,7 +279,6 @@ class FBSNN(ABC):
         # Return the training history (iterations and corresponding losses)
         return graph
 
-
     def predict(self, Xi_star, t_star, W_star):
         # Predicts the output of the neural network
         # Parameters:

@@ -54,4 +54,5 @@ class CallOption(FBSNN):
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
         # Each matrix is scaled by 0.4 times the corresponding state in X
-        return 0.4 * torch.diag_embed(X)  # M x D x D #0.4 is the volatility
+        sigma_vol = 0.4
+        return sigma_vol * torch.diag_embed(X)  # M x D x D #0.4 is the volatility
