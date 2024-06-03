@@ -17,7 +17,6 @@ class CallOption(FBSNN):
         # M: Batch size
         # N: Number of time discretization steps
         # D: Dimension of the problem
-        # Mm: Number of discretization points for the SDE
         # layers: Configuration of the neural network layers
         # mode: Operation mode
         # activation: Activation function for the neural network
@@ -30,21 +29,21 @@ class CallOption(FBSNN):
         # Y: Batch of current value functions, size M x 1
         # Z: Batch of gradients of the value function with respect to X, size M x D
         # Returns the drift term for each instance in the batch, size M x 1
-        rate = 0.05  # Risk-free interest rate
-        return rate * (Y)   # M x 1 #0.05 is the risk free rate
+        rate = 0.01  # Risk-free interest rate
+        return rate * (Y) # M x 1
 
     def g_tf(self, X):  
         # Terminal condition for the Black-Scholes-Barenblatt equation for a batch
         # X: Batch of terminal states, size M x D
         # Returns the terminal condition for each instance in the batch, size M x 1
-        temp = torch.sum(torch.maximum(X - 1.0, torch.tensor(0.0)), dim=1, keepdim=True)
-        return temp  # M x 1
+        temp = torch.sum(X, dim=1, keepdim=True)
+        return torch.maximum(temp - self.strike, torch.tensor(0.0))
 
     def mu_tf(self, t, X, Y, Z): 
         # Drift coefficient of the underlying stochastic process for a batch
         # Inherits from the superclass FBSNN without modification
         # Parameters are the same as in phi_tf, with batch sizes
-        rate = 0.05
+        rate = 0.01
         return rate * X # M x D
 
     def sigma_tf(self, t, X, Y):  
@@ -54,5 +53,5 @@ class CallOption(FBSNN):
         # Y: Batch of current value functions, size M x 1 (not used in this method)
         # Returns a batch of diagonal matrices, each of size D x D, for the diffusion coefficients
         # Each matrix is scaled by 0.4 times the corresponding state in X
-        sigma_vol = 0.4
-        return sigma_vol * torch.diag_embed(X)  # M x D x D #0.4 is the volatility
+        sigma = 0.25 # Volatility
+        return sigma * torch.diag_embed(X)  # M x D x D
