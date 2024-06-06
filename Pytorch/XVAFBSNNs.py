@@ -121,7 +121,7 @@ class XVAFBSNN(ABC):
         return Dg
 
 
-    def loss_function(self, t, W, C):
+    def loss_function(self, t, W, X, C):
         # Calculates the loss for the neural network
         # Parameters:
         # t: A batch of time instances, with dimensions M x (N+1) x 1
@@ -137,9 +137,9 @@ class XVAFBSNN(ABC):
         t0 = t[:, 0, :].reshape(self.portfolio_model.M,1)
         W0 = W[:, 0, :].reshape(self.portfolio_model.M,self.portfolio_model.D)
         C0 = C[:, 0, :].reshape(self.portfolio_model.M,1)
+        X0 = X[:,0,:].reshape(self.portfolio_model.M,self.portfolio_model.D)
         # Initial state for all trajectories
-        Y0, Z0 = self.net_u(t0, C0)  # Obtain the network output and its gradient at the initial state
-
+        Y0, Z0 = self.net_u(t0, X0)  # Obtain the network output and its gradient at the initial state
         # Store the initial state and the network output
         C_list.append(C0)
         Y_list.append(Y0)
@@ -150,13 +150,13 @@ class XVAFBSNN(ABC):
             t1 = t[:, n + 1, :].reshape(self.portfolio_model.M,1)
             W1 = W[:, n + 1, :].reshape(self.portfolio_model.M, self.portfolio_model.D)
             C1 = C[:, n + 1, :].reshape(self.portfolio_model.M, 1)
+            X1 = X[:, n + 1, :].reshape(self.portfolio_model.M, self.portfolio_model.D)
             
             # Compute the predicted value (Y1_tilde) at the next state
             Y1_tilde = Y0 + self.phi_tf(t0, C0, Y0, Z0) * (t1 - t0) + torch.sum(
                 Z0 * (W1 - W0), dim=1, keepdim=True)        
             # Obtain the network output and its gradient at the next state
-            Y1, Z1 = self.net_u(t1, C1)
-
+            Y1, Z1 = self.net_u(t1, X1)
             # Add the squared difference between Y1 and Y1_tilde to the loss
             loss += torch.sum(torch.pow(Y1 - Y1_tilde, 2))
 
@@ -186,8 +186,8 @@ class XVAFBSNN(ABC):
         # Generates a minibatch of time steps and corresponding Brownian motion paths
         Xi = np.array([1] * int(self.D))[None, :]
         t, W = self.portfolio_model.fetch_minibatch()
-        _, C = self.portfolio_model.predict(Xi, t, W)
-        return t, W, C
+        X, C = self.portfolio_model.predict(Xi, t, W)
+        return t, W, X, C
 
     def train(self, N_Iter, learning_rate):
         # Train the neural network model.
@@ -215,10 +215,10 @@ class XVAFBSNN(ABC):
             self.optimizer.zero_grad()
 
             # Fetch a minibatch of time steps and Brownian motion paths
-            t_batch, W_batch, C_batch = self.fetch_minibatch()  # M x (N+1) x 1, M x (N+1) x D
+            t_batch, W_batch, X_batch, C_batch = self.fetch_minibatch()  # M x (N+1) x 1, M x (N+1) x D
 
             # Compute the loss for the current batch
-            loss, C_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, C_batch)
+            loss, C_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, X_batch, C_batch)
             # Perform backpropagation
             self.optimizer.zero_grad()  # Zero the gradients again to ensure correct gradient accumulation
             loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
@@ -247,7 +247,7 @@ class XVAFBSNN(ABC):
         return graph
 
 
-    def predict(self, C_star, t_star, W_star):
+    def predict(self, C_star, t_star, W_star, X_star):
         # Predicts the output of the neural network
         # Parameters:
         # Xi_star: The initial state for the prediction, given as a numpy array
@@ -255,7 +255,7 @@ class XVAFBSNN(ABC):
         # W_star: The Brownian motion paths corresponding to the time steps
 
         # Compute the loss and obtain predicted states (X_star) and outputs (Y_star) using the trained model
-        _, C_star, Y_star, _ = self.loss_function(t_star, W_star, C_star)
+        _, C_star, Y_star, _ = self.loss_function(t_star, W_star, X_star, C_star)
 
         # Return the predicted states and outputs
         # These predictions correspond to the neural network's estimation of the state and output at each time step

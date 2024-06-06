@@ -233,6 +233,14 @@ class FBSNN(ABC):
 
         # Set up the optimizer (Adam) for the neural network with the specified learning rate
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.SGD(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.LBFGS(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.RMSprop(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.RAdam(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.Adamax(self.model.parameters(), lr=learning_rate)
+
+
+        # self.Y0_pred = None
 
         # Record the start time for timing the training process
         start_time = time.time()
@@ -249,6 +257,20 @@ class FBSNN(ABC):
 
             # Fetch a minibatch of time steps and Brownian motion paths
             t_batch, W_batch = self.fetch_minibatch()  # M x (N+1) x 1, M x (N+1) x D
+        
+            # def closure():
+            #     self.optimizer.zero_grad()  # Zero the gradients
+            #     loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
+            #     # Check for NaNs in the loss
+            #     if torch.isnan(loss):
+            #         print(f"NaN encountered in loss at iteration {it}")
+            #         return loss
+            #     loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
+            #     self.Y0_pred = Y0_pred
+            #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            #     return loss
+            
+            # loss = self.optimizer.step(closure)
 
             # Compute the loss for the current batch
             loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
