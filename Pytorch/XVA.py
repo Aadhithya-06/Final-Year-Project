@@ -34,8 +34,9 @@ class XVA(XVAFBSNN):
         r_fb = 0.04 # Funding rate for short position
         r_cl = 0.00 # Collateral rate for long position
         r_cb = 0.00 # Collateral rate for short position
-        R_C = 0.3 # Recovery rate for counterparty
-        R_B = 0.4 # Recovery rate for bank
+        R_C = 1.0 # Recovery rate for counterparty
+        R_B = 1.0 # Recovery rate for bank
+        alpha = 0 # Alpha for collateral
         collateral = 0 # Collateral
         intensityC = 0 # Intensity for counterparty
         intensityB = 0 # Intensity for bank

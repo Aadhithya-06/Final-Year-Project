@@ -184,6 +184,7 @@ class XVAFBSNN(ABC):
 
     def fetch_minibatch(self):  # Generate time + a Brownian motion
         # Generates a minibatch of time steps and corresponding Brownian motion paths
+        # np.random.seed(37) # Set the seed for reproducibility
         Xi = np.array([1] * int(self.D))[None, :]
         t, W = self.portfolio_model.fetch_minibatch()
         X, C = self.portfolio_model.predict(Xi, t, W)
