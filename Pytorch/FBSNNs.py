@@ -187,7 +187,7 @@ class FBSNN(ABC):
 
     def fetch_minibatch(self):  # Generate time + a Brownian motion
         # Generates a minibatch of time steps and corresponding Brownian motion paths
-        # np.random.seed(37)  # Set the seed for reproducibility
+        # np.random.seed(0)  # Set the seed for reproducibility
         T = self.T  # Terminal time
         M = self.M  # Number of trajectories (batch size)
         N = self.N  # Number of time snapshots
