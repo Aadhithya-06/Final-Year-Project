@@ -22,7 +22,7 @@ class FBSNN(ABC):
         # D: Number of dimensions for the problem
         # Mm: Number of discretization points for the SDE
         # layers: List indicating the size of each layer in the neural network
-        # mode: Specifies the architecture of the neural network (e.g., 'FC' for fully connected)
+        # mode: Specifies the architecture of the neural network 
         # activation: Activation function to be used in the neural network
 
         # Check if CUDA is available and set the appropriate device (GPU or CPU)
@@ -43,8 +43,7 @@ class FBSNN(ABC):
         self.N = N  # number of time snapshots
         self.D = D  # number of dimensions
         self.Mm = Mm  # number of discretization points for the SDE
-        self.strike = 1 * self.D  # strike price
-        self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
+        self.strike = 1.0 * self.D  # strike price
 
         self.mode = mode  # architecture of the neural network
         self.activation = activation  # activation function        # Initialize the activation function based on the provided parameter
@@ -150,7 +149,7 @@ class FBSNN(ABC):
             # Next time step and Brownian motion increment
             t1 = t[:, n + 1, :]
             W1 = W[:, n + 1, :]
-
+            # Compute the next state using the Euler-Maruyama method
             X1 = X0 + self.mu_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.squeeze(
                 torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1)), dim=-1)
             
@@ -158,10 +157,9 @@ class FBSNN(ABC):
             Y1_tilde = Y0 + self.phi_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.sum(
                 Z0 * torch.squeeze(torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1))), dim=1,
                 keepdim=True)
-
+            
             # Obtain the network output and its gradient at the next state
             Y1, Z1 = self.net_u(t1, X1)
-
             # Add the squared difference between Y1 and Y1_tilde to the loss
             loss += torch.sum(torch.pow(Y1 - Y1_tilde, 2))
 
@@ -189,7 +187,7 @@ class FBSNN(ABC):
 
     def fetch_minibatch(self):  # Generate time + a Brownian motion
         # Generates a minibatch of time steps and corresponding Brownian motion paths
-
+        # np.random.seed(0)  # Set the seed for reproducibility
         T = self.T  # Terminal time
         M = self.M  # Number of trajectories (batch size)
         N = self.N  # Number of time snapshots
@@ -204,10 +202,9 @@ class FBSNN(ABC):
 
         # Populate the time step sizes for each trajectory and time snapshot (excluding the initial time)
         Dt[:, 1:, :] = dt
-
         # Generate Brownian increments for each trajectory and time snapshot
         DW_uncorrelated = np.sqrt(dt) * np.random.normal(size=(M, N, D))
-        DW[:, 1:, :] = np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) # Apply Cholesky matrix to introduce correlations
+        DW[:, 1:, :] = DW_uncorrelated # np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) # Apply Cholesky matrix to introduce correlations
 
         # Cumulatively sum the time steps and Brownian increments to get the actual time values and Brownian paths
         t = np.cumsum(Dt, axis=1)  # Cumulative time for each trajectory and time snapshot
@@ -236,15 +233,22 @@ class FBSNN(ABC):
 
         # Set up the optimizer (Adam) for the neural network with the specified learning rate
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.SGD(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.LBFGS(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.RMSprop(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.RAdam(self.model.parameters(), lr=learning_rate)
+        # self.optimizer = optim.Adamax(self.model.parameters(), lr=learning_rate)
+
+
+        # self.Y0_pred = None
 
         # Record the start time for timing the training process
         start_time = time.time()
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
+            
             if it >= 4000 and it < 20000:
                 self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
-                if(it % 4000 == 0):
-                    print('N: ', self.N)
             elif it < 4000:
                 self.N = int(np.ceil(self.Mm))
 
@@ -253,18 +257,32 @@ class FBSNN(ABC):
 
             # Fetch a minibatch of time steps and Brownian motion paths
             t_batch, W_batch = self.fetch_minibatch()  # M x (N+1) x 1, M x (N+1) x D
+        
+            # def closure():
+            #     self.optimizer.zero_grad()  # Zero the gradients
+            #     loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
+            #     # Check for NaNs in the loss
+            #     if torch.isnan(loss):
+            #         print(f"NaN encountered in loss at iteration {it}")
+            #         return loss
+            #     loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
+            #     self.Y0_pred = Y0_pred
+            #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            #     return loss
+            
+            # loss = self.optimizer.step(closure)
 
             # Compute the loss for the current batch
             loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
-
             # Perform backpropagation
             self.optimizer.zero_grad()  # Zero the gradients again to ensure correct gradient accumulation
             loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            
             self.optimizer.step()  # Update the network parameters based on the gradients
 
             # Store the current loss value for later averaging
             loss_temp = np.append(loss_temp, loss.cpu().detach().numpy())
-
             # Print the training progress every 100 iterations
             if it % 100 == 0:
                 elapsed = time.time() - start_time  # Calculate the elapsed time
@@ -277,13 +295,11 @@ class FBSNN(ABC):
                 self.training_loss.append(loss_temp.mean())  # Append the average loss
                 loss_temp = np.array([])  # Reset the temporary loss array
                 self.iteration.append(it)  # Append the current iteration number
-
         # Stack the iteration and training loss for plotting
         graph = np.stack((self.iteration, self.training_loss))
 
         # Return the training history (iterations and corresponding losses)
         return graph
-
 
     def predict(self, Xi_star, t_star, W_star):
         # Predicts the output of the neural network
@@ -302,28 +318,6 @@ class FBSNN(ABC):
         # Return the predicted states and outputs
         # These predictions correspond to the neural network's estimation of the state and output at each time step
         return X_star, Y_star
-
-    def generate_cholesky(self):
-        # Variances of the individual assets
-        rho = 0.5
-
-        # Create an identity matrix for the diagonal
-        correlation_matrix = np.eye(self.D)
-
-        # Set off-diagonal elements to rho
-        correlation_matrix[correlation_matrix == 0] = rho
-
-
-        # Check if the correlation matrix is valid
-        if not np.allclose(correlation_matrix, correlation_matrix.T):
-            raise ValueError("Correlation matrix is not symmetric.")
-        if np.any(np.linalg.eigvalsh(correlation_matrix) < 0):
-            raise ValueError("Correlation matrix is not positive semi-definite.")
-
-        # Standard deviations (square roots of variances)
-        L = np.linalg.cholesky(correlation_matrix)
-
-        return L
 
     def save_model(self, file_name):
         torch.save({

@@ -9,8 +9,8 @@ import torch.optim as optim
 from Models import *
 
 
-class FBSNN(ABC):
-    def __init__(self, Xi, T, M, N, D, Mm, layers, mode, activation):
+class XVAFBSNN(ABC):
+    def __init__(self, Xi, T, M, N, D, Mm, layers, mode, activation, portfolio_model):
         # Constructor for the FBSNN class
         # Initializes the neural network with specified parameters and architecture
         
@@ -22,7 +22,7 @@ class FBSNN(ABC):
         # D: Number of dimensions for the problem
         # Mm: Number of discretization points for the SDE
         # layers: List indicating the size of each layer in the neural network
-        # mode: Specifies the architecture of the neural network (e.g., 'FC' for fully connected)
+        # mode: Specifies the architecture of the neural network
         # activation: Activation function to be used in the neural network
 
         # Check if CUDA is available and set the appropriate device (GPU or CPU)
@@ -44,6 +44,8 @@ class FBSNN(ABC):
         self.D = D  # number of dimensions
         self.Mm = Mm  # number of discretization points for the SDE
         self.strike = 1.0 * self.D  # strike price
+        self.portfolio_model = portfolio_model
+        # self.L = self.generate_cholesky()  # Cholesky decomposition of the correlation matrix
 
         self.mode = mode  # architecture of the neural network
         self.activation = activation  # activation function        # Initialize the activation function based on the provided parameter
@@ -51,8 +53,6 @@ class FBSNN(ABC):
             self.activation_function = Sine()
         elif activation == "ReLU":
             self.activation_function = nn.ReLU()
-        elif activation == "Tanh":
-            self.activation_function = nn.Tanh()
 
         # Initialize the neural network based on the chosen mode
         if self.mode == "FC":
@@ -121,101 +121,74 @@ class FBSNN(ABC):
         return Dg
 
 
-    def loss_function(self, t, W, Xi):
+    def loss_function(self, t, W, X, C):
         # Calculates the loss for the neural network
         # Parameters:
         # t: A batch of time instances, with dimensions M x (N+1) x 1
         # W: A batch of Brownian motion increments, with dimensions M x (N+1) x D
-        # Xi: Initial state, with dimensions 1 x D
+        # Y_pred: A batch of network outputs, with dimensions M x (N+1) x 1
 
         loss = 0  # Initialize the loss to zero.
         X_list = []  # List to store the states at each time step.
         Y_list = []  # List to store the network outputs at each time step.
+        C_list = []  # List to store the model option price at each time step.
 
         # Initial time and Brownian motion increment.
-        t0 = t[:, 0, :]
-        W0 = W[:, 0, :]
-
+        t0 = t[:, 0, :].reshape(self.portfolio_model.M,1)
+        W0 = W[:, 0, :].reshape(self.portfolio_model.M,self.portfolio_model.D)
+        C0 = C[:, 0, :].reshape(self.portfolio_model.M,1)
+        X0 = X[:,0,:].reshape(self.portfolio_model.M,self.portfolio_model.D)
         # Initial state for all trajectories
-        X0 = Xi.repeat(self.M, 1).view(self.M, self.D)  # M x D
         Y0, Z0 = self.net_u(t0, X0)  # Obtain the network output and its gradient at the initial state
-
         # Store the initial state and the network output
-        X_list.append(X0)
+        C_list.append(C0)
         Y_list.append(Y0)
 
         # Iterate over each time step
         for n in range(0, self.N):
             # Next time step and Brownian motion increment
-            t1 = t[:, n + 1, :]
-            W1 = W[:, n + 1, :]
-            # Compute the next state using the Euler-Maruyama method
-            X1 = X0 + self.mu_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.squeeze(
-                torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1)), dim=-1)
+            t1 = t[:, n + 1, :].reshape(self.portfolio_model.M,1)
+            W1 = W[:, n + 1, :].reshape(self.portfolio_model.M, self.portfolio_model.D)
+            C1 = C[:, n + 1, :].reshape(self.portfolio_model.M, 1)
+            X1 = X[:, n + 1, :].reshape(self.portfolio_model.M, self.portfolio_model.D)
             
             # Compute the predicted value (Y1_tilde) at the next state
-            Y1_tilde = Y0 + self.phi_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.sum(
-                Z0 * torch.squeeze(torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1))), dim=1,
-                keepdim=True)
-            
+            Y1_tilde = Y0 + self.phi_tf(t0, C0, Y0, Z0) * (t1 - t0) + torch.sum(
+                Z0 * (W1 - W0), dim=1, keepdim=True)        
             # Obtain the network output and its gradient at the next state
             Y1, Z1 = self.net_u(t1, X1)
             # Add the squared difference between Y1 and Y1_tilde to the loss
             loss += torch.sum(torch.pow(Y1 - Y1_tilde, 2))
 
             # Update the variables for the next iteration
-            t0, W0, X0, Y0, Z0 = t1, W1, X1, Y1, Z1
+            t0, W0, C0, Y0, Z0 = t1, W1, C1, Y1, Z1
 
             # Store the current state and the network output
-            X_list.append(X0)
+            C_list.append(C0)
             Y_list.append(Y0)
 
         # Add the terminal condition to the loss: 
         # the difference between the network output and the target at the final state
-        loss += torch.sum(torch.pow(Y1 - self.g_tf(X1), 2))
+        loss += torch.sum(torch.pow(Y1 - self.g_tf(C1), 2))
         # Add the difference between the network's gradient and the gradient of g at the final state
-        loss += torch.sum(torch.pow(Z1 - self.Dg_tf(X1), 2))
+        loss += torch.sum(torch.pow(Z1 - self.Dg_tf(C1), 2))
 
         # Stack the states and network outputs for all time steps
-        X = torch.stack(X_list, dim=1)
+        C = torch.stack(C_list, dim=1)
         Y = torch.stack(Y_list, dim=1)
 
         # Return the loss and the states and outputs at each time step
         # The final element returned is the first element of the network output, for reference or further use
-        return loss, X, Y, Y[0, 0, 0]
+        return loss, C, Y, Y[0, 0, 0]
 
 
     def fetch_minibatch(self):  # Generate time + a Brownian motion
         # Generates a minibatch of time steps and corresponding Brownian motion paths
-        # np.random.seed(0)  # Set the seed for reproducibility
-        T = self.T  # Terminal time
-        M = self.M  # Number of trajectories (batch size)
-        N = self.N  # Number of time snapshots
-        D = self.D  # Number of dimensions
-
-        # Initialize arrays for time steps and Brownian increments
-        Dt = np.zeros((M, N + 1, 1))  # Time step sizes for each trajectory and time snapshot
-        DW = np.zeros((M, N + 1, D))  # Brownian increments for each trajectory, time snapshot, and dimension
-
-        # Calculate the time step size
-        dt = T / N
-
-        # Populate the time step sizes for each trajectory and time snapshot (excluding the initial time)
-        Dt[:, 1:, :] = dt
-        # Generate Brownian increments for each trajectory and time snapshot
-        DW_uncorrelated = np.sqrt(dt) * np.random.normal(size=(M, N, D))
-        DW[:, 1:, :] = DW_uncorrelated # np.einsum('ij,mnj->mni', self.L, DW_uncorrelated) # Apply Cholesky matrix to introduce correlations
-
-        # Cumulatively sum the time steps and Brownian increments to get the actual time values and Brownian paths
-        t = np.cumsum(Dt, axis=1)  # Cumulative time for each trajectory and time snapshot
-        W = np.cumsum(DW, axis=1)  # Cumulative Brownian motion for each trajectory, time snapshot, and dimension
-
-        # Convert the numpy arrays to PyTorch tensors and transfer them to the configured device (CPU or GPU)
-        t = torch.from_numpy(t).float().to(self.device)
-        W = torch.from_numpy(W).float().to(self.device)
-
-        # Return the time values and Brownian paths.
-        return t, W
+        # np.random.seed(0) # Set the seed for reproducibility
+        Xi = np.array([1] * int(self.D))[None, :]
+        t, W = self.portfolio_model.fetch_minibatch()
+        X, C = self.portfolio_model.predict(Xi, t, W)
+        return t, W, X, C
 
     def train(self, N_Iter, learning_rate):
         # Train the neural network model.
@@ -233,56 +206,28 @@ class FBSNN(ABC):
 
         # Set up the optimizer (Adam) for the neural network with the specified learning rate
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
-        # self.optimizer = optim.SGD(self.model.parameters(), lr=learning_rate)
-        # self.optimizer = optim.LBFGS(self.model.parameters(), lr=learning_rate)
-        # self.optimizer = optim.RMSprop(self.model.parameters(), lr=learning_rate)
-        # self.optimizer = optim.RAdam(self.model.parameters(), lr=learning_rate)
-        # self.optimizer = optim.Adamax(self.model.parameters(), lr=learning_rate)
-
-
-        # self.Y0_pred = None
 
         # Record the start time for timing the training process
         start_time = time.time()
         # Training loop
         for it in range(previous_it, previous_it + N_Iter):
-            
-            if it >= 4000 and it < 20000:
-                self.N = int(np.ceil(self.Mm ** (int(it / 4000) + 1)))
-            elif it < 4000:
-                self.N = int(np.ceil(self.Mm))
 
-            # Zero the gradients before each iteration
+            #Zero the gradients before each iteration
             self.optimizer.zero_grad()
 
             # Fetch a minibatch of time steps and Brownian motion paths
-            t_batch, W_batch = self.fetch_minibatch()  # M x (N+1) x 1, M x (N+1) x D
-        
-            # def closure():
-            #     self.optimizer.zero_grad()  # Zero the gradients
-            #     loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
-            #     # Check for NaNs in the loss
-            #     if torch.isnan(loss):
-            #         print(f"NaN encountered in loss at iteration {it}")
-            #         return loss
-            #     loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
-            #     self.Y0_pred = Y0_pred
-            #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-            #     return loss
-            
-            # loss = self.optimizer.step(closure)
+            t_batch, W_batch, X_batch, C_batch = self.fetch_minibatch()  # M x (N+1) x 1, M x (N+1) x D
 
             # Compute the loss for the current batch
-            loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
+            loss, C_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, X_batch, C_batch)
             # Perform backpropagation
             self.optimizer.zero_grad()  # Zero the gradients again to ensure correct gradient accumulation
             loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-            
             self.optimizer.step()  # Update the network parameters based on the gradients
 
             # Store the current loss value for later averaging
             loss_temp = np.append(loss_temp, loss.cpu().detach().numpy())
+
             # Print the training progress every 100 iterations
             if it % 100 == 0:
                 elapsed = time.time() - start_time  # Calculate the elapsed time
@@ -295,29 +240,28 @@ class FBSNN(ABC):
                 self.training_loss.append(loss_temp.mean())  # Append the average loss
                 loss_temp = np.array([])  # Reset the temporary loss array
                 self.iteration.append(it)  # Append the current iteration number
+
         # Stack the iteration and training loss for plotting
         graph = np.stack((self.iteration, self.training_loss))
 
         # Return the training history (iterations and corresponding losses)
         return graph
 
-    def predict(self, Xi_star, t_star, W_star):
+
+    def predict(self, C_star, t_star, W_star, X_star):
         # Predicts the output of the neural network
         # Parameters:
         # Xi_star: The initial state for the prediction, given as a numpy array
         # t_star: The time steps at which predictions are to be made
         # W_star: The Brownian motion paths corresponding to the time steps
 
-        # Convert the initial state (Xi_star) from a numpy array to a PyTorch tensor
-        Xi_star = torch.from_numpy(Xi_star).float().to(self.device)
-        Xi_star.requires_grad = True
-
         # Compute the loss and obtain predicted states (X_star) and outputs (Y_star) using the trained model
-        _, X_star, Y_star, _ = self.loss_function(t_star, W_star, Xi_star)
+        _, C_star, Y_star, _ = self.loss_function(t_star, W_star, X_star, C_star)
 
         # Return the predicted states and outputs
         # These predictions correspond to the neural network's estimation of the state and output at each time step
-        return X_star, Y_star
+        return C_star, Y_star
+
 
     def save_model(self, file_name):
         torch.save({
@@ -333,7 +277,7 @@ class FBSNN(ABC):
         self.iteration = checkpoint['iteration']
 
     @abstractmethod
-    def phi_tf(self, t, X, Y, Z):  # M x 1, M x D, M x 1, M x D
+    def phi_tf(self, t, C, Y, Z):  # M x 1, M x D, M x 1, M x D
         # Abstract method for defining the drift term in the SDE
         # Parameters:
         # t: Time instances, size M x 1
@@ -344,7 +288,7 @@ class FBSNN(ABC):
         pass
 
     @abstractmethod
-    def g_tf(self, X):  # M x D
+    def g_tf(self, C):  # M x D
         # Abstract method for defining the terminal condition of the SDE
         # Parameter:
         # X: Terminal state variables, size M x D
@@ -352,20 +296,7 @@ class FBSNN(ABC):
         pass
 
     @abstractmethod
-    def mu_tf(self, t, X, Y, Z):  # M x 1, M x D, M x 1, M x D
-        # Abstract method for defining the drift coefficient of the underlying stochastic process
-        # Parameters:
-        # t: Time instances, size M x 1
-        # X: State variables, size M x D
-        # Y: Function values at state variables, size M x 1
-        # Z: Gradient of the function with respect to state variables, size M x D
-        # Default implementation returns a zero tensor of size M x D
-        M = self.M
-        D = self.D
-        return torch.zeros([M, D]).to(self.device)  # M x D
-
-    @abstractmethod
-    def sigma_tf(self, t, X, Y):  # M x 1, M x D, M x 1
+    def sigma_tf(self, t, C, Y):  # M x 1, M x D, M x 1
         # Abstract method for defining the diffusion coefficient of the underlying stochastic process
         # Parameters:
         # t: Time instances, size M x 1

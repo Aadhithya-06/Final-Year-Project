@@ -41,7 +41,7 @@ class Naisnet(nn.Module):
         self.epsilon = 0.01
         self.stable = stable
 
-    def project(self, layer, out):  # Building block for the NAIS-Net
+    def project(self, layer, out):  
         weights = layer.weight
         delta = 1 - 2 * self.epsilon
         RtR = torch.matmul(weights.t(), weights)
