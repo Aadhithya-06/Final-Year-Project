@@ -5,6 +5,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.distributions import Normal
 
 from Models import *
 
@@ -122,67 +123,91 @@ class FBSNN(ABC):
 
 
     def loss_function(self, t, W, Xi):
-        # Calculates the loss for the neural network
-        # Parameters:
-        # t: A batch of time instances, with dimensions M x (N+1) x 1
-        # W: A batch of Brownian motion increments, with dimensions M x (N+1) x D
-        # Xi: Initial state, with dimensions 1 x D
+            # Calculates the loss for the neural network
+            # Parameters:
+            # t: A batch of time instances, with dimensions M x (N+1) x 1
+            # W: A batch of Brownian motion increments, with dimensions M x (N+1) x D
+            # Xi: Initial state, with dimensions 1 x D
 
-        loss = 0  # Initialize the loss to zero.
-        X_list = []  # List to store the states at each time step.
-        Y_list = []  # List to store the network outputs at each time step.
+            loss = 0  # Initialize the loss to zero.
+            X_list = []  # List to store the states at each time step.
+            Y_list = []  # List to store the network outputs at each time step.
+            Z_list = []  # List to store the network gradients at each time step.
 
-        # Initial time and Brownian motion increment.
-        t0 = t[:, 0, :]
-        W0 = W[:, 0, :]
+            # Initial time and Brownian motion increment.
+            t0 = t[:, 0, :]
+            W0 = W[:, 0, :]
 
-        # Initial state for all trajectories
-        X0 = Xi.repeat(self.M, 1).view(self.M, self.D)  # M x D
-        Y0, Z0 = self.net_u(t0, X0)  # Obtain the network output and its gradient at the initial state
+            # Initial state for all trajectories
+            X0 = Xi.repeat(self.M, 1).view(self.M, self.D)  # M x D
+            Y0, Z0 = self.net_u(t0, X0)  # Obtain the network output and its gradient at the initial state
 
-        # Store the initial state and the network output
-        X_list.append(X0)
-        Y_list.append(Y0)
-
-        # Iterate over each time step
-        for n in range(0, self.N):
-            # Next time step and Brownian motion increment
-            t1 = t[:, n + 1, :]
-            W1 = W[:, n + 1, :]
-            # Compute the next state using the Euler-Maruyama method
-            X1 = X0 + self.mu_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.squeeze(
-                torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1)), dim=-1)
-            
-            # Compute the predicted value (Y1_tilde) at the next state
-            Y1_tilde = Y0 + self.phi_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.sum(
-                Z0 * torch.squeeze(torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1))), dim=1,
-                keepdim=True)
-            
-            # Obtain the network output and its gradient at the next state
-            Y1, Z1 = self.net_u(t1, X1)
-            # Add the squared difference between Y1 and Y1_tilde to the loss
-            loss += torch.sum(torch.pow(Y1 - Y1_tilde, 2))
-
-            # Update the variables for the next iteration
-            t0, W0, X0, Y0, Z0 = t1, W1, X1, Y1, Z1
-
-            # Store the current state and the network output
+            # Store the initial state and the network output
             X_list.append(X0)
             Y_list.append(Y0)
+            Z_list.append(Z0)
 
-        # Add the terminal condition to the loss: 
-        # the difference between the network output and the target at the final state
-        loss += torch.sum(torch.pow(Y1 - self.g_tf(X1), 2))
-        # Add the difference between the network's gradient and the gradient of g at the final state
-        loss += torch.sum(torch.pow(Z1 - self.Dg_tf(X1), 2))
+            # Define the normal distribution for calculating the true delta
+            norm_cdf = Normal(0, 1).cdf
 
-        # Stack the states and network outputs for all time steps
-        X = torch.stack(X_list, dim=1)
-        Y = torch.stack(Y_list, dim=1)
+            # Iterate over each time step
+            for n in range(0, self.N):
+                # Next time step and Brownian motion increment
+                t1 = t[:, n + 1, :]
+                W1 = W[:, n + 1, :]
+                # Compute the next state using the Euler-Maruyama method
+                X1 = X0 + self.mu_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.squeeze(
+                    torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1)), dim=-1)
+                
+                # Compute the predicted value (Y1_tilde) at the next state
+                Y1_tilde = Y0 + self.phi_tf(t0, X0, Y0, Z0) * (t1 - t0) + torch.sum(
+                    Z0 * torch.squeeze(torch.matmul(self.sigma_tf(t0, X0, Y0), (W1 - W0).unsqueeze(-1))), dim=1,
+                    keepdim=True)
+                            
+                # Obtain the network output and its gradient at the next state
+                Y1, Z1 = self.net_u(t1, X1)
+                # Add the squared difference between Y1 and Y1_tilde to the loss
+                loss += torch.sum(torch.pow(Y1 - Y1_tilde, 2))
 
-        # Return the loss and the states and outputs at each time step
-        # The final element returned is the first element of the network output, for reference or further use
-        return loss, X, Y, Y[0, 0, 0]
+                # # Calculate the true delta of the call option at the current time step
+                # r = 0.01
+                # sigma = 0.25
+                # K = self.strike  # Assume the strike price is defined in the class
+                # T = 1 - t[:, n + 1, :]  # Time to maturity at the current time step
+                # S = X1  # The stock price at the current state
+
+                # with torch.no_grad():
+                #     d1 = (torch.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * torch.sqrt(T))
+                #     d1[T == 0] = torch.where(S[T == 0] > K, torch.tensor(float('inf')),
+                #                                 torch.where(S[T == 0] == K, torch.tensor(0.0), torch.tensor(float('-inf'))))
+                                                
+                # delta_true = norm_cdf(d1)  # True delta of the call option
+
+                # # Add the squared error between the true delta and the network's gradient to the loss
+                # loss += torch.sum(torch.pow(Z1 - delta_true, 2))
+
+                # Update the variables for the next iteration
+                t0, W0, X0, Y0, Z0 = t1, W1, X1, Y1, Z1
+
+                # Store the current state and the network output
+                X_list.append(X0)
+                Y_list.append(Y0)
+                Z_list.append(Z0)
+
+            # Add the terminal condition to the loss: 
+            # the difference between the network output and the target at the final state
+            loss += torch.sum(torch.pow(Y1 - self.g_tf(X1), 2))
+            # Add the difference between the network's gradient and the gradient of g at the final state
+            loss += torch.sum(torch.pow(Z1 - self.Dg_tf(X1), 2))
+
+            # Stack the states and network outputs for all time steps
+            X = torch.stack(X_list, dim=1)
+            Y = torch.stack(Y_list, dim=1)
+            Z = torch.stack(Z_list, dim=1)
+
+            # Return the loss and the states and outputs at each time step
+            # The final element returned is the first element of the network output, for reference or further use
+            return loss, X, Y, Y[0, 0, 0], Z
 
 
     def fetch_minibatch(self):  # Generate time + a Brownian motion
@@ -273,7 +298,7 @@ class FBSNN(ABC):
             # loss = self.optimizer.step(closure)
 
             # Compute the loss for the current batch
-            loss, X_pred, Y_pred, Y0_pred = self.loss_function(t_batch, W_batch, self.Xi)
+            loss, X_pred, Y_pred, Y0_pred, Z_pred = self.loss_function(t_batch, W_batch, self.Xi)
             # Perform backpropagation
             self.optimizer.zero_grad()  # Zero the gradients again to ensure correct gradient accumulation
             loss.backward()  # Compute the gradients of the loss w.r.t. the network parameters
@@ -313,11 +338,11 @@ class FBSNN(ABC):
         Xi_star.requires_grad = True
 
         # Compute the loss and obtain predicted states (X_star) and outputs (Y_star) using the trained model
-        _, X_star, Y_star, _ = self.loss_function(t_star, W_star, Xi_star)
+        _, X_star, Y_star, _, Z_star = self.loss_function(t_star, W_star, Xi_star)
 
         # Return the predicted states and outputs
         # These predictions correspond to the neural network's estimation of the state and output at each time step
-        return X_star, Y_star
+        return X_star, Y_star, Z_star
 
     def save_model(self, file_name):
         torch.save({
